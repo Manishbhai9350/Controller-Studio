@@ -1,3 +1,5 @@
+import type { UniformNode } from "three/webgpu";
+
 interface mouseMove {
   x: number;
   y: number;
@@ -20,4 +22,10 @@ interface MouseTrailOptions {
 interface MouseTrailReturn {
   canvas: HTMLCanvasElement;
   update: () => void;
+}
+
+interface uniforms {
+  uFrequency: UniformNode<"float", number>;
+  uScale: UniformNode<"float", number>;
+  uSpeed: UniformNode<"float", number>;
 }

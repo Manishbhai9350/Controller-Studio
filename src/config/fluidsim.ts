@@ -16,8 +16,11 @@ import {
   dot,
   fract,
   mix,
+  time,
 } from "three/tsl";
 import { MeshBasicNodeMaterial } from "three/webgpu";
+import { fbm } from "../noises/fbm";
+import type { uniforms } from "../types";
 
 interface FluidSimReturn {
   maskNode: ReturnType<typeof texture>;
@@ -27,9 +30,9 @@ interface FluidSimReturn {
 export const SetupFluidSim = (
   renderer: THREE.WebGPURenderer,
   width: number,
-  height: number
+  height: number,
+  Uniforms: uniforms,
 ): FluidSimReturn => {
-
   // ── Two render targets — the ping pong pair ──
   const opts: THREE.RenderTargetOptions = {
     minFilter: THREE.LinearFilter,
@@ -41,47 +44,61 @@ export const SetupFluidSim = (
   let targetB = new THREE.RenderTarget(width, height, opts);
 
   // TSL nodes — bridges between sim and rest of pipeline
-  const prevNode = texture(targetA.texture);  // shader reads this
+  const prevNode = texture(targetA.texture); // shader reads this
   const inputNode = texture(new THREE.Texture()); // mouse trail input
-  const maskNode = texture(targetA.texture);  // compositor reads this
+  const maskNode = texture(targetA.texture); // compositor reads this
 
   // ── FBM noise for organic displacement ──
-  const fbm = (uvCoord: any, octaves: number) => {
-    let value = float(0.0);
-    let amplitude = float(0.5);
-    let frequency = float(1.0);
+  //   const fbm1 = (
+  //     uvCoord: THREE.ConstNode<"vec2", THREE.Vector2>,
+  //     octaves: number,
+  //   ) => {
+  //     let value = float(0.0);
+  //     let amplitude = float(0.5);
+  //     let frequency = float(1.0);
 
-    for (let i = 0; i < octaves; i++) {
-      const scaled = mul(uvCoord, frequency);
-      const nx = fract(mul(sin(dot(scaled, vec2(127.1, 311.7))), float(43758.5453)));
-      const ny = fract(mul(sin(dot(scaled, vec2(269.5, 183.3))), float(43758.5453)));
-      const n = mix(float(-1.0), float(1.0), mul(add(nx, ny), float(0.5)));
-      value = add(value, mul(amplitude, n));
-      amplitude = mul(amplitude, float(0.5));
-      frequency = mul(frequency, float(2.0));
-    }
-    return value;
-  };
+  //     for (let i = 0; i < octaves; i++) {
+  //       const scaled = mul(uvCoord, frequency);
+  //       const nx = fract(
+  //         mul(sin(dot(scaled, vec2(127.1, 311.7))), float(43758.5453)),
+  //       );
+  //       const ny = fract(
+  //         mul(sin(dot(scaled, vec2(269.5, 183.3))), float(43758.5453)),
+  //       );
+  //       const n = mix(float(-1.0), float(1.0), mul(add(nx, ny), float(0.5)));
+  //       value = add(value, mul(amplitude, n));
+  //       amplitude = mul(amplitude, float(0.5));
+  //       frequency = mul(frequency, float(2.0));
+  //     }
+  //     return value;
+  //   };
 
   // ── Fluid shader ──
   const fluidShader = Fn(() => {
     const uvCoord = uv();
 
     const aspect = height / width;
-    const aspectVec = width < height
-      ? vec2(1.0, 1.0 / aspect)
-      : vec2(aspect, 1.0);
+    const aspectVec =
+      width < height ? vec2(1.0, 1.0 / aspect) : vec2(aspect, 1.0);
 
     // FBM displacement — makes spread uneven and organic
-    const disp = mul(
-      mul(fbm(mul(uvCoord, float(20.0)), 4), aspectVec),
-      float(0.01)
+    const noisedValue = fbm(
+      vec3(
+        mul(uvCoord, Uniforms.uFrequency),
+        time.mul(0.001).mul(Uniforms.uSpeed),
+      ),
+    );
+    const disp = noisedValue
+      .mul(aspectVec)
+      .mul(float(0.001).mul(Uniforms.uScale));
+
+    const blendDarken = Fn(
+      ([base, blend]: [THREE.VarNode<"vec3">, THREE.VarNode<"vec3">]) =>
+        min(blend, base),
     );
 
-    const blendDarken = Fn(([base, blend]: any) => min(blend, base));
-
     // Sample previous frame at 5 positions
-    const texel  = prevNode.sample(uvCoord);
+    const texel = prevNode.sample(uvCoord);
     const texel2 = prevNode.sample(vec2(add(uvCoord.x, disp.x), uvCoord.y));
     const texel3 = prevNode.sample(vec2(sub(uvCoord.x, disp.x), uvCoord.y));
     const texel4 = prevNode.sample(vec2(uvCoord.x, add(uvCoord.y, disp.y)));

@@ -40,7 +40,17 @@ export const SetupMouseTrail = ({
     };
   });
 
+  let theta = 0;
+
   const update = () => {
+    // theta += 0.05;
+    // theta %= Math.PI * 2;
+
+    // targetMouse = {
+    //   x: Math.cos(theta * Math.abs(Math.sin(theta))) / 2 + .5,
+    //   y: Math.sin(theta * Math.abs(Math.sin(theta))) / 2 + .5,
+    // };
+
     if (!mouse && targetMouse) {
       mouse = { ...targetMouse };
       lastMouse = { ...targetMouse };
@@ -58,27 +68,28 @@ export const SetupMouseTrail = ({
     const dy = mouse.y - lastMouse.y;
     const speed = Math.sqrt(dx * dx + dy * dy);
 
-    let LerpFactor = .1;
+    let LerpFactor = 0.1;
     const targetOpacity = speed > 0.001 ? 1 : 0;
-    if(targetOpacity == 0) {
-      LerpFactor = .05
+    if (targetOpacity == 0) {
+      LerpFactor = 0.05;
     } else {
-      LerpFactor = .1
+      LerpFactor = 0.1;
     }
     opacity = LERP(targetOpacity, opacity, LerpFactor);
 
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, width, height);
 
-    if (opacity > 0.01) {
-      ctx.beginPath();
-      ctx.moveTo(lastMouse.x * width, lastMouse.y * height);
-      ctx.lineTo(mouse.x * width, mouse.y * height);
-      ctx.lineCap = "round";
-      ctx.lineWidth = width * 0.2;
-      ctx.strokeStyle = `rgba(0, 0, 0, ${opacity})`;
-      ctx.stroke();
-    }
+    // if (opacity > 0.01) {
+    ctx.beginPath();
+    ctx.moveTo(lastMouse.x * width, lastMouse.y * height);
+    ctx.lineTo(mouse.x * width, mouse.y * height);
+    ctx.lineCap = "round";
+    ctx.lineWidth = width * 0.2;
+    ctx.strokeStyle = `rgba(0, 0, 0, ${opacity})`;
+    // ctx.strokeStyle = `rgba(0, 0, 0, 1)`;
+    ctx.stroke();
+    // }
   };
 
   return { canvas, update };

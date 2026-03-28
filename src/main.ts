@@ -1,18 +1,22 @@
 import "./style.css";
 
 import * as THREE from "three/webgpu";
-import { Fn, texture, uv, vec4 } from "three/tsl";
+import { Fn, texture, uniform, uv, vec4 } from "three/tsl";
 import { SetupMouseTrail } from "./config/mouse";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
 import { SetupFluidSim } from "./config/fluidsim";
+import { Pane } from "tweakpane";
 
 const main = document.body.querySelector("main");
 const Canvas3D: HTMLCanvasElement | null | undefined =
   main?.querySelector("canvas.threejs");
 
+
 if (!main || !Canvas3D) {
   throw new Error("Something Went Wrong!");
 }
+
+const pane = new Pane()
 
 const renderer = new THREE.WebGPURenderer({
   antialias: true,
@@ -21,6 +25,18 @@ const renderer = new THREE.WebGPURenderer({
 renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(devicePixelRatio);
 await renderer.init();
+
+
+
+const Uniforms = {
+  uFrequency: uniform(50),
+  uScale: uniform(6),
+  uSpeed: uniform(1),
+}
+
+pane.addBinding(Uniforms.uFrequency,'value',{ min:0,max:100, step:.1, label:"Frequency" })
+pane.addBinding(Uniforms.uScale,'value',{ min:0,max:10, step:.001, label:"Scale" })
+pane.addBinding(Uniforms.uSpeed,'value',{ min:0,max:1000, step:.001, label:"Speed" })
 
 const MouseTrail = SetupMouseTrail({ width: 512, height: 512 });
 main.appendChild(MouseTrail.canvas);
@@ -33,7 +49,7 @@ trailTexture.generateMipmaps = false;
 trailTexture.flipY = false;
 
 // Fluid sim
-const FluidSim = SetupFluidSim(renderer, 512, 512);
+const FluidSim = SetupFluidSim(renderer, innerWidth, innerHeight, Uniforms);
 
 // Orthographic camera — maps exactly to clip space
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
