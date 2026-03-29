@@ -1,14 +1,16 @@
 // config/controllers.ts
 import type { GLTFLoader } from "three/examples/jsm/Addons.js";
+import { Pane } from "tweakpane";
 import * as THREE from "three/webgpu";
+import { fitModelToView } from "../utils";
+import { createBackgroundPlane } from "./background";
 
 const sceneA = new THREE.Scene();
 const sceneB = new THREE.Scene();
 const CameraA = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
 const CameraB = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
 
-CameraA.position.set(0, 0.5, 5);
-CameraB.position.set(0, 0.5, 5);
+
 CameraA.lookAt(0, 0, 0);
 CameraB.lookAt(0, 0, 0);
 
@@ -31,22 +33,27 @@ const setupLights = (scene: THREE.Scene) => {
   scene.add(ambient, keyLight, fillLight, rimLight);
 };
 
+const C1BG = "#1A3A1F";
+const C2BG = "#F0ECE4";
+
 export const SetupControllers = ({
   width,
   height,
   GLB,
   renderer,
+  pane,
 }: {
   width: number;
   height: number;
   GLB: GLTFLoader;
   renderer: THREE.WebGPURenderer;
+  pane: Pane;
 }) => {
   const aspect = width / height;
 
   [CameraA, CameraB].forEach((Camera) => {
     Camera.aspect = aspect;
-    Camera.position.set(0, 0.5, 2);
+    Camera.position.set(0, 0, 2);
     Camera.updateProjectionMatrix();
   });
 
@@ -60,25 +67,88 @@ export const SetupControllers = ({
   setupLights(sceneA);
   setupLights(sceneB);
 
+  createBackgroundPlane(sceneA, CameraA, C1BG);
+  createBackgroundPlane(sceneB, CameraB, C2BG);
+
+  const Tweeks = {
+    rx: 1.4,
+    ry: 0,
+    rz: 0,
+    mx: 0,
+    my: 0,
+    mz: 0,
+  };
+
+  let C1: THREE.Group<THREE.Object3DEventMap> | null,
+    C2: THREE.Group<THREE.Object3DEventMap> | null;
+
+  const Con = pane.addFolder({
+    title: "Controllers",
+  });
+
+  // Con.addBinding(Tweeks, "rx", {
+  //   min: -2 * Math.PI,
+  //   max: 2 * Math.PI,
+  //   step: 0.1,
+  //   label: "Rx",
+  // }).on("change", ({ value }) => {
+  //   if (C1) {
+  //     C1.rotation.x = value;
+  //   }
+  //   if (C2) {
+  //     C2.rotation.x = value;
+  //   }
+  // });
+  // Con.addBinding(Tweeks, "ry", {
+  //   min: -2 * Math.PI,
+  //   max: 2 * Math.PI,
+  //   step: 0.1,
+  //   label: "Ry",
+  // }).on("change", ({ value }) => {
+  //   if (C1) {
+  //     C1.rotation.y = value;
+  //   }
+  //   if (C2) {
+  //     C2.rotation.y = value;
+  //   }
+  // });
+  // Con.addBinding(Tweeks, "rz", {
+  //   min: -2 * Math.PI,
+  //   max: 2 * Math.PI,
+  //   step: 0.1,
+  //   label: "Rz",
+  // }).on("change", ({ value }) => {
+  //   if (C1) {
+  //     C1.rotation.z = value;
+  //   }
+  //   if (C2) {
+  //     C2.rotation.z = value;
+  //   }
+  // });
+
   GLB.load("/models/controller-permian.glb", (glb) => {
-    const model = glb.scene;
+    C1 = glb.scene;
 
-    // Scale up to reasonable size
-    model.scale.setScalar(10);
+    sceneA.add(C1);
 
-    sceneA.add(model);
-    console.log("permian loaded");
+    // ✨ Fit to view
+    fitModelToView(C1, CameraA, width, height);
+
+    // ✨ Default rotation
+    C1.rotation.set(1.4, 0, 0);
   });
 
   GLB.load("/models/controller-basic.glb", (glb) => {
-    const model = glb.scene;
+    C2 = glb.scene;
 
-    model.scale.setScalar(10);
+    sceneB.add(C2);
 
-    sceneB.add(model);
-    console.log("basic loaded");
+    // ✨ Fit to view
+    fitModelToView(C2, CameraB, width, height);
+
+    // ✨ Default rotation
+    C2.rotation.set(1.4, 0, 0);
   });
-
   const update = () => {
     renderer.setRenderTarget(targetA);
     renderer.render(sceneA, CameraA);

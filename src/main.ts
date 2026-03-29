@@ -82,6 +82,7 @@ const controllers = SetupControllers({
   height: innerHeight,
   GLB,
   renderer,
+  pane
 });
 
 // Fluid sim
