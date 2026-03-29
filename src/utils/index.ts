@@ -33,3 +33,27 @@ export const fitModelToView = (
 
   model.scale.setScalar(scale);
 };
+
+
+export function setupStudioLights(scene: THREE.Scene) {
+  // soft global light
+  const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+
+  // key light (top-left)
+  const key = new THREE.DirectionalLight(0xffffff, 2.5);
+  key.position.set(-3, 4, 3);
+
+  // fill light (right side soft)
+  const fill = new THREE.DirectionalLight(0xffffff, 1.2);
+  fill.position.set(3, 1, 2);
+
+  // rim light (back glow)
+  const rim = new THREE.DirectionalLight(0xffffff, 2);
+  rim.position.set(0, 2, -4);
+
+  // subtle bottom bounce
+  const bounce = new THREE.DirectionalLight(0xffffff, 0.6);
+  bounce.position.set(0, -3, 1);
+
+  scene.add(ambient, key, fill, rim, bounce);
+}

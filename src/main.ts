@@ -1,7 +1,17 @@
 import "./style.css";
 
 import * as THREE from "three/webgpu";
-import { Fn, mix, texture, uniform, uv, vec4 } from "three/tsl";
+import {
+  Fn,
+  mix,
+  pass,
+  sub,
+  texture,
+  uniform,
+  uv,
+  vec2,
+  vec4,
+} from "three/tsl";
 import { SetupMouseTrail } from "./config/mouse";
 import {
   DRACOLoader,
@@ -77,48 +87,40 @@ GLB.setDRACOLoader(Draco);
 
 // Controllers
 
-const controllers = SetupControllers({
-  width: innerWidth,
-  height: innerHeight,
-  GLB,
-  renderer,
-  pane
-});
+const { SceneA, CameraA, SceneB, CameraB, targetB, renderSceneBToTarget } =
+  SetupControllers({
+    width: innerWidth,
+    height: innerHeight,
+    GLB,
+    renderer,
+    pane,
+  });
 
 // Fluid sim
 const FluidSim = SetupFluidSim(renderer, innerWidth, innerHeight, Uniforms);
 
-// Orthographic camera — maps exactly to clip space
-const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
-const scene = new THREE.Scene();
-
-// Fullscreen quad sampling the trail texture
-const geo = new THREE.PlaneGeometry(2, 2);
-const mat = new THREE.MeshBasicNodeMaterial();
-const t1 = texture(controllers.targetA.texture);
-const t2 = texture(controllers.targetB.texture);
-const mask = FluidSim.maskNode;
-
-mat.colorNode = Fn(() => {
-  const uvCoord = uv();
-  const colorA = t1.sample(uvCoord);
-  const colorB = t2.sample(uvCoord);
-  const fluidMask = mask.sample(uvCoord).r;
-  return mix(colorA, colorB, fluidMask);
-})();
-// mat.colorNode = FluidSim.maskNode;
-// mat.colorNode = texture(trailTexture).sample(uv());
-// mat.colorNode = Fn(() => {
-//   return vec4(uv(), 0, 1);
-// })();
-
-new OrbitControls(camera, Canvas3D);
-
-const quad = new THREE.Mesh(geo, mat);
-scene.add(quad);
-
 let Time = new THREE.Timer();
 let PrevTime = Time.getElapsed();
+
+// new OrbitControls(CameraA, Canvas3D);
+// new OrbitControls(CameraB, Canvas3D);
+
+const renderPipeline = new THREE.RenderPipeline(renderer);
+
+// const scenePass = pass(SceneA, CameraA);
+const scenePass = pass(SceneA, CameraA);
+
+const t1 = scenePass.getTextureNode("output");
+const t2 = texture(targetB.texture);
+const maskNode = FluidSim.maskNode;
+
+renderPipeline.outputNode = Fn(() => {
+  const flippedUV = vec2(uv().x, uv().y.oneMinus());
+
+  const mask = maskNode.sample(flippedUV).r.oneMinus();
+
+  return mix(t1,t2,mask);
+})();
 
 function animate() {
   const CurrentTime = Time.getElapsed();
@@ -126,17 +128,17 @@ function animate() {
   PrevTime = CurrentTime;
 
   MouseTrail.update();
-
-  // Tell Three.js canvas pixels changed
   trailTexture.needsUpdate = true;
 
-  // Feed trail into fluid sim
+  // 1️⃣ update fluid sim
   FluidSim.update(trailTexture);
 
-  controllers.update();
+  // 2️⃣ render sceneB into texture FIRST
+  renderSceneBToTarget();
 
-  // Render to screen
-  renderer.render(scene, camera);
+  // 3️⃣ render final screen LAST
+  // renderer.render(SceneA, CameraA);
+  renderPipeline.render();
 
   requestAnimationFrame(animate);
 }

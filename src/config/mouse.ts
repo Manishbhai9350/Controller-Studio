@@ -40,17 +40,8 @@ export const SetupMouseTrail = ({
     };
   });
 
-  let theta = 0;
-
   const update = () => {
-    // theta += 0.05;
-    // theta %= Math.PI * 2;
-
-    // targetMouse = {
-    //   x: Math.cos(theta * Math.abs(Math.sin(theta))) / 2 + .5,
-    //   y: Math.sin(theta * Math.abs(Math.sin(theta))) / 2 + .5,
-    // };
-
+    // return;
     if (!mouse && targetMouse) {
       mouse = { ...targetMouse };
       lastMouse = { ...targetMouse };
@@ -69,7 +60,7 @@ export const SetupMouseTrail = ({
     const speed = Math.sqrt(dx * dx + dy * dy);
 
     let LerpFactor = 0.1;
-    const targetOpacity = speed > 0.001 ? 1 : 0;
+    const targetOpacity = speed > 0.005 ? 1 : 0;
     if (targetOpacity == 0) {
       LerpFactor = 0.05;
     } else {
@@ -85,7 +76,7 @@ export const SetupMouseTrail = ({
     ctx.moveTo(lastMouse.x * width, lastMouse.y * height);
     ctx.lineTo(mouse.x * width, mouse.y * height);
     ctx.lineCap = "round";
-    ctx.lineWidth = width * 0.2;
+    ctx.lineWidth = width * 0.35;
     ctx.strokeStyle = `rgba(0, 0, 0, ${opacity})`;
     // ctx.strokeStyle = `rgba(0, 0, 0, 1)`;
     ctx.stroke();
