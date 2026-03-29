@@ -29,3 +29,8 @@ interface uniforms {
   uScale: UniformNode<"float", number>;
   uSpeed: UniformNode<"float", number>;
 }
+
+interface ControllersProps {
+  permian: THREE.Group<THREE.Object3DEventMap> | null;
+  basic: THREE.Group<THREE.Object3DEventMap> | null;
+}

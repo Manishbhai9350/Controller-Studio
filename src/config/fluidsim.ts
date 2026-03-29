@@ -29,8 +29,10 @@ interface FluidSimReturn {
 
 export const SetupFluidSim = (
   renderer: THREE.WebGPURenderer,
-  width: number,
-  height: number,
+  width: number, // fluid sim resolution — 512
+  height: number, // fluid sim resolution — 512
+  // screenWidth: number, // actual screen width
+  // screenHeight: number, // actual screen height
   Uniforms: uniforms,
 ): FluidSimReturn => {
   // ── Two render targets — the ping pong pair ──
@@ -77,14 +79,20 @@ export const SetupFluidSim = (
   const fluidShader = Fn(() => {
     const uvCoord = uv();
 
+    // Correct UV for screen aspect ratio so mask isn't stretched
+    const screenAspect = width / height;
+    const correctedUV = vec2(
+      uvCoord.x.mul(screenAspect).sub(float((screenAspect - 1.0) / 2.0)),
+      uvCoord.y,
+    );
+
     const aspect = height / width;
     const aspectVec =
       width < height ? vec2(1.0, 1.0 / aspect) : vec2(aspect, 1.0);
 
-    // FBM displacement — makes spread uneven and organic
     const noisedValue = fbm(
       vec3(
-        mul(uvCoord, Uniforms.uFrequency),
+        mul(correctedUV, Uniforms.uFrequency),
         time.mul(0.001).mul(Uniforms.uSpeed),
       ),
     );
@@ -97,26 +105,23 @@ export const SetupFluidSim = (
         min(blend, base),
     );
 
-    // Sample previous frame at 5 positions
     const texel = prevNode.sample(uvCoord);
     const texel2 = prevNode.sample(vec2(add(uvCoord.x, disp.x), uvCoord.y));
     const texel3 = prevNode.sample(vec2(sub(uvCoord.x, disp.x), uvCoord.y));
     const texel4 = prevNode.sample(vec2(uvCoord.x, add(uvCoord.y, disp.y)));
     const texel5 = prevNode.sample(vec2(uvCoord.x, sub(uvCoord.y, disp.y)));
 
-    // Keep darkest — this is the spread
     const floodcolor = texel.rgb.toVar();
     floodcolor.assign(blendDarken(floodcolor, texel2.rgb));
     floodcolor.assign(blendDarken(floodcolor, texel3.rgb));
     floodcolor.assign(blendDarken(floodcolor, texel4.rgb));
     floodcolor.assign(blendDarken(floodcolor, texel5.rgb));
 
-    // Blend in mouse trail — darkest wins
-    const flippedUV = vec2(uvCoord.x, sub(float(1.0), uvCoord.y));
+    // Use correctedUV for mouse trail sampling too
+    const flippedUV = vec2(correctedUV.x, sub(float(1.0), correctedUV.y));
     const input = inputNode.sample(flippedUV);
     const combined = blendDarken(floodcolor, input.rgb);
 
-    // Fade back to white — ~67 frames to recover
     return min(vec3(1.0), add(combined, vec3(0.015)));
   });
 

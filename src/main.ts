@@ -1,22 +1,26 @@
 import "./style.css";
 
 import * as THREE from "three/webgpu";
-import { Fn, texture, uniform, uv, vec4 } from "three/tsl";
+import { Fn, mix, texture, uniform, uv, vec4 } from "three/tsl";
 import { SetupMouseTrail } from "./config/mouse";
-import { OrbitControls } from "three/examples/jsm/Addons.js";
+import {
+  DRACOLoader,
+  GLTFLoader,
+  OrbitControls,
+} from "three/examples/jsm/Addons.js";
 import { SetupFluidSim } from "./config/fluidsim";
 import { Pane } from "tweakpane";
+import { SetupControllers } from "./config/controller.scene";
 
 const main = document.body.querySelector("main");
 const Canvas3D: HTMLCanvasElement | null | undefined =
   main?.querySelector("canvas.threejs");
 
-
 if (!main || !Canvas3D) {
   throw new Error("Something Went Wrong!");
 }
 
-const pane = new Pane()
+const pane = new Pane();
 
 const renderer = new THREE.WebGPURenderer({
   antialias: true,
@@ -26,17 +30,30 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(devicePixelRatio);
 await renderer.init();
 
-
-
 const Uniforms = {
   uFrequency: uniform(50),
   uScale: uniform(6),
   uSpeed: uniform(1),
-}
+};
 
-pane.addBinding(Uniforms.uFrequency,'value',{ min:0,max:100, step:.1, label:"Frequency" })
-pane.addBinding(Uniforms.uScale,'value',{ min:0,max:10, step:.001, label:"Scale" })
-pane.addBinding(Uniforms.uSpeed,'value',{ min:0,max:1000, step:.001, label:"Speed" })
+pane.addBinding(Uniforms.uFrequency, "value", {
+  min: 0,
+  max: 100,
+  step: 0.1,
+  label: "Frequency",
+});
+pane.addBinding(Uniforms.uScale, "value", {
+  min: 0,
+  max: 10,
+  step: 0.001,
+  label: "Scale",
+});
+pane.addBinding(Uniforms.uSpeed, "value", {
+  min: 0,
+  max: 1000,
+  step: 0.001,
+  label: "Speed",
+});
 
 const MouseTrail = SetupMouseTrail({ width: 512, height: 512 });
 main.appendChild(MouseTrail.canvas);
@@ -48,6 +65,25 @@ trailTexture.magFilter = THREE.LinearFilter;
 trailTexture.generateMipmaps = false;
 trailTexture.flipY = false;
 
+// Loader
+
+// After — no manager
+const Draco = new DRACOLoader();
+const GLB = new GLTFLoader();
+
+Draco.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.7/");
+Draco.setDecoderConfig({ type: "wasm" });
+GLB.setDRACOLoader(Draco);
+
+// Controllers
+
+const controllers = SetupControllers({
+  width: innerWidth,
+  height: innerHeight,
+  GLB,
+  renderer,
+});
+
 // Fluid sim
 const FluidSim = SetupFluidSim(renderer, innerWidth, innerHeight, Uniforms);
 
@@ -58,7 +94,18 @@ const scene = new THREE.Scene();
 // Fullscreen quad sampling the trail texture
 const geo = new THREE.PlaneGeometry(2, 2);
 const mat = new THREE.MeshBasicNodeMaterial();
-mat.colorNode = FluidSim.maskNode;
+const t1 = texture(controllers.targetA.texture);
+const t2 = texture(controllers.targetB.texture);
+const mask = FluidSim.maskNode;
+
+mat.colorNode = Fn(() => {
+  const uvCoord = uv();
+  const colorA = t1.sample(uvCoord);
+  const colorB = t2.sample(uvCoord);
+  const fluidMask = mask.sample(uvCoord).r;
+  return mix(colorA, colorB, fluidMask);
+})();
+// mat.colorNode = FluidSim.maskNode;
 // mat.colorNode = texture(trailTexture).sample(uv());
 // mat.colorNode = Fn(() => {
 //   return vec4(uv(), 0, 1);
@@ -82,9 +129,10 @@ function animate() {
   // Tell Three.js canvas pixels changed
   trailTexture.needsUpdate = true;
 
-
   // Feed trail into fluid sim
   FluidSim.update(trailTexture);
+
+  controllers.update();
 
   // Render to screen
   renderer.render(scene, camera);
