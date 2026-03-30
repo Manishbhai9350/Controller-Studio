@@ -52,8 +52,8 @@ export const SetupMouseTrail = ({
 
     lastMouse = { ...mouse };
 
-    mouse.x = LERP(targetMouse.x, mouse.x, 0.05);
-    mouse.y = LERP(targetMouse.y, mouse.y, 0.05);
+    mouse.x = LERP(targetMouse.x, mouse.x, 0.07);
+    mouse.y = LERP(targetMouse.y, mouse.y, 0.07);
 
     const dx = mouse.x - lastMouse.x;
     const dy = mouse.y - lastMouse.y;
@@ -61,11 +61,11 @@ export const SetupMouseTrail = ({
 
     let LerpFactor = 0.1;
     const targetOpacity = speed > 0.001 ? 1 : 0;
-    if (targetOpacity == 0) {
-      LerpFactor = 0.05;
-    } else {
-      LerpFactor = 0.1;
-    }
+    // if (targetOpacity == 0) {
+    //   LerpFactor = 0.05;
+    // } else {
+    // }
+    LerpFactor = 0.3;
     opacity = LERP(targetOpacity, opacity, LerpFactor);
 
     ctx.fillStyle = "white";
@@ -82,6 +82,5 @@ export const SetupMouseTrail = ({
     ctx.stroke();
     // }
   };
-
   return { canvas, update };
 };

@@ -10,8 +10,7 @@ import {
   sub,
   mul,
   min,
-  mix,
-  time,
+  time
 } from "three/tsl";
 import { MeshBasicNodeMaterial } from "three/webgpu";
 import { fbm } from "../noises/fbm";
@@ -50,27 +49,27 @@ export const SetupFluidSim = (
     const uvCoord = uv();
 
     // aspect corrected UV so mask is not stretched
-    const screenAspect = width / height;
-    const correctedUV = vec2(
-      uvCoord.x.mul(screenAspect).sub(float((screenAspect - 1.0) / 2.0)),
-      uvCoord.y,
-    );
+    // const screenAspect = width / height;
+    // const correctedUV = vec2(
+    //   uvCoord.x.mul(screenAspect).sub(float((screenAspect - 1.0) / 2.0)),
+    //   uvCoord.y,
+    // );
 
     // displacement aspect fix
-    const aspect = height / width;
-    const aspectVec =
-      width < height ? vec2(1.0, 1.0 / aspect) : vec2(aspect, 1.0);
+    // const aspect = height / width;
+    // const aspectVec =
+    //   width < height ? vec2(1.0, 1.0 / aspect) : vec2(aspect, 1.0);
 
     // FBM noise displacement
     const noiseVal = fbm(
       vec3(
-        mul(correctedUV, Uniforms.uFrequency),
+        mul(uvCoord, Uniforms.uFrequency),
         time.mul(0.001).mul(Uniforms.uSpeed),
       ),
     );
 
     const disp = noiseVal
-      .mul(aspectVec)
+      // .mul(aspectVec)
       .mul(float(0.001).mul(Uniforms.uScale));
 
     // darken blend helper
@@ -93,12 +92,17 @@ export const SetupFluidSim = (
     floodcolor.assign(blendDarken(floodcolor, texel5.rgb));
 
     // mouse trail input
-    const flippedUV = vec2(correctedUV.x, sub(float(1.0), correctedUV.y));
+    const flippedUV = vec2(uvCoord.x, sub(float(1.0), uvCoord.y));
     const input = inputNode.sample(flippedUV);
     const combined = blendDarken(floodcolor, input.rgb);
 
+    // If(combined.r.greaterThan(.4), () => {
+    //   combined.rgb.assign(vec3(1,1,1))
+    // })
+
     // feedback
     return min(vec3(1.0), add(combined, vec3(0.015)));
+    // return vec4(correctedUV,0,1);
   });
 
   // FBO full screen quad

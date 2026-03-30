@@ -60,10 +60,19 @@ export const SetupControllers = ({
     mx: 0,
     my: 0,
     mz: 0,
-    C1BG: "#1A3A1F",
-    // C2BG: "#F0ECE4",
-    C2BG: "#ffb41f",
+    // C1BG: "#1A3A1F",
+    C1BG: "#ceccc7",
+    C2BG: "#F0ECE4",
+    // C2BG: "#ffb41f",
   };
+
+  // --- Mouse rotation state ---
+  let mouse = { x: 0, y: 0 };
+  let targetMouse = { x: 0, y: 0 };
+  let smoothMouse = { x: 0, y: 0 };
+
+  // strength of effect (very important for premium feel)
+  const mouseStrength = 0.4;
 
   const opts = {
     minFilter: THREE.LinearFilter,
@@ -78,56 +87,13 @@ export const SetupControllers = ({
   setupLights(SceneB);
 
   createBackgroundPlane(SceneA, CameraA, Tweeks.C1BG);
-  // createBackgroundPlane(SceneB, CameraB, Tweeks.C2BG);
+  createBackgroundPlane(SceneB, CameraB, Tweeks.C2BG);
 
   let C1: THREE.Group<THREE.Object3DEventMap> | null,
     C2: THREE.Group<THREE.Object3DEventMap> | null;
 
   const Con = pane.addFolder({
     title: "Controllers",
-  });
-
-  Con.addBinding(Tweeks, "C1BG", { color: true, label: "Color 1" });
-  Con.addBinding(Tweeks, "C2BG", { color: true, label: "Color 2" });
-
-  Con.addBinding(Tweeks, "rx", {
-    min: -Math.PI,
-    max: Math.PI,
-    step: 0.1,
-    label: "Rx",
-  }).on("change", ({ value }) => {
-    if (C1) {
-      C1.rotation.x = value;
-    }
-    if (C2) {
-      C2.rotation.x = value;
-    }
-  });
-  Con.addBinding(Tweeks, "ry", {
-    min: -Math.PI,
-    max: Math.PI,
-    step: 0.1,
-    label: "Ry",
-  }).on("change", ({ value }) => {
-    if (C1) {
-      C1.rotation.y = value;
-    }
-    if (C2) {
-      C2.rotation.y = value;
-    }
-  });
-  Con.addBinding(Tweeks, "rz", {
-    min: -Math.PI,
-    max: Math.PI,
-    step: 0.1,
-    label: "Rz",
-  }).on("change", ({ value }) => {
-    if (C1) {
-      C1.rotation.z = value;
-    }
-    if (C2) {
-      C2.rotation.z = value;
-    }
   });
 
   GLB.load("/models/controller-permian.glb", (glb) => {
@@ -157,7 +123,33 @@ export const SetupControllers = ({
     C2.rotation.y = Tweeks.ry;
     C2.rotation.z = Tweeks.rz;
   });
+
+  const updateMouseRotation = () => {
+    // Smooth mouse (LERP feel)
+    smoothMouse.x += (targetMouse.x - smoothMouse.x) * 0.05;
+    smoothMouse.y += (targetMouse.y - smoothMouse.y) * 0.05;
+
+    const rotX = Tweeks.rx + smoothMouse.y * mouseStrength;
+    const rotY = Math.PI + Tweeks.ry + smoothMouse.x * mouseStrength;
+
+    if (C1) {
+      C1.rotation.x = rotX;
+      C1.rotation.z = rotY;
+    }
+
+    if (C2) {
+      C2.rotation.x = rotX;
+      C2.rotation.z = rotY;
+    }
+  };
+
+  window.addEventListener("mousemove", (e) => {
+    targetMouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    targetMouse.y = (e.clientY / window.innerHeight) * 2 - 1;
+  });
+
   const renderSceneBToTarget = () => {
+    updateMouseRotation();
     renderer.setRenderTarget(targetB);
     renderer.render(SceneB, CameraB);
     renderer.setRenderTarget(null);

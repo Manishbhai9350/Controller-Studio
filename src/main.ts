@@ -5,6 +5,8 @@ import {
   Fn,
   mix,
   pass,
+  smoothstep,
+  step,
   sub,
   texture,
   uniform,
@@ -114,14 +116,15 @@ let PrevTime = Time.getElapsed();
 
 const renderPipeline = new THREE.RenderPipeline(renderer);
 
-// const scenePass = pass(SceneA, CameraA);
 const scenePass = pass(SceneA, CameraA);
+// const scenePass = pass(SceneB, CameraB);
 
 const t1 = scenePass.getTextureNode("output");
 const t2 = texture(targetB.texture);
 const maskNode = FluidSim.maskNode;
 
-renderPipeline.outputNode = t1;
+// renderPipeline.outputNode = maskNode.sample(vec2(uv().x,uv().y.oneMinus()));
+renderPipeline.outputNode = mix(t1,t2,smoothstep(.35,.65,maskNode.sample(vec2(uv().x,uv().y.oneMinus())).r.oneMinus()));
 
 // renderPipeline.outputNode = Fn(() => {
 //   const screenUV = uv();
