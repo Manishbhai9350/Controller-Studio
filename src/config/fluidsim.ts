@@ -1,4 +1,3 @@
-// config/fluidSim.ts
 import * as THREE from "three/webgpu";
 import {
   texture,
@@ -11,10 +10,6 @@ import {
   sub,
   mul,
   min,
-  sin,
-  cos,
-  dot,
-  fract,
   mix,
   time,
 } from "three/tsl";
@@ -29,82 +24,62 @@ interface FluidSimReturn {
 
 export const SetupFluidSim = (
   renderer: THREE.WebGPURenderer,
-  width: number, // fluid sim resolution — 512
-  height: number, // fluid sim resolution — 512
-  // screenWidth: number, // actual screen width
-  // screenHeight: number, // actual screen height
+  width: number,
+  height: number,
   Uniforms: uniforms,
 ): FluidSimReturn => {
-  // ── Two render targets — the ping pong pair ──
+
+  // ping pong render targets
   const opts: THREE.RenderTargetOptions = {
     minFilter: THREE.LinearFilter,
     magFilter: THREE.LinearFilter,
     depthBuffer: false,
     stencilBuffer: false,
   };
+
   let targetA = new THREE.RenderTarget(width, height, opts);
   let targetB = new THREE.RenderTarget(width, height, opts);
 
-  // TSL nodes — bridges between sim and rest of pipeline
-  const prevNode = texture(targetA.texture); // shader reads this
-  const inputNode = texture(new THREE.Texture()); // mouse trail input
-  const maskNode = texture(targetA.texture); // compositor reads this
+  // TSL bridge nodes
+  const prevNode = texture(targetA.texture);
+  const inputNode = texture(new THREE.Texture());
+  const maskNode = texture(targetA.texture);
 
-  // ── FBM noise for organic displacement ──
-  //   const fbm1 = (
-  //     uvCoord: THREE.ConstNode<"vec2", THREE.Vector2>,
-  //     octaves: number,
-  //   ) => {
-  //     let value = float(0.0);
-  //     let amplitude = float(0.5);
-  //     let frequency = float(1.0);
-
-  //     for (let i = 0; i < octaves; i++) {
-  //       const scaled = mul(uvCoord, frequency);
-  //       const nx = fract(
-  //         mul(sin(dot(scaled, vec2(127.1, 311.7))), float(43758.5453)),
-  //       );
-  //       const ny = fract(
-  //         mul(sin(dot(scaled, vec2(269.5, 183.3))), float(43758.5453)),
-  //       );
-  //       const n = mix(float(-1.0), float(1.0), mul(add(nx, ny), float(0.5)));
-  //       value = add(value, mul(amplitude, n));
-  //       amplitude = mul(amplitude, float(0.5));
-  //       frequency = mul(frequency, float(2.0));
-  //     }
-  //     return value;
-  //   };
-
-  // ── Fluid shader ──
+  // fluid shader
   const fluidShader = Fn(() => {
     const uvCoord = uv();
 
-    // Correct UV for screen aspect ratio so mask isn't stretched
+    // aspect corrected UV so mask is not stretched
     const screenAspect = width / height;
     const correctedUV = vec2(
       uvCoord.x.mul(screenAspect).sub(float((screenAspect - 1.0) / 2.0)),
       uvCoord.y,
     );
 
+    // displacement aspect fix
     const aspect = height / width;
     const aspectVec =
       width < height ? vec2(1.0, 1.0 / aspect) : vec2(aspect, 1.0);
 
-    const noisedValue = fbm(
+    // FBM noise displacement
+    const noiseVal = fbm(
       vec3(
         mul(correctedUV, Uniforms.uFrequency),
         time.mul(0.001).mul(Uniforms.uSpeed),
       ),
     );
-    const disp = noisedValue
+
+    const disp = noiseVal
       .mul(aspectVec)
       .mul(float(0.001).mul(Uniforms.uScale));
 
+    // darken blend helper
     const blendDarken = Fn(
       ([base, blend]: [THREE.VarNode<"vec3">, THREE.VarNode<"vec3">]) =>
         min(blend, base),
     );
 
+    // advection samples
     const texel = prevNode.sample(uvCoord);
     const texel2 = prevNode.sample(vec2(add(uvCoord.x, disp.x), uvCoord.y));
     const texel3 = prevNode.sample(vec2(sub(uvCoord.x, disp.x), uvCoord.y));
@@ -117,15 +92,16 @@ export const SetupFluidSim = (
     floodcolor.assign(blendDarken(floodcolor, texel4.rgb));
     floodcolor.assign(blendDarken(floodcolor, texel5.rgb));
 
-    // Use correctedUV for mouse trail sampling too
+    // mouse trail input
     const flippedUV = vec2(correctedUV.x, sub(float(1.0), correctedUV.y));
     const input = inputNode.sample(flippedUV);
     const combined = blendDarken(floodcolor, input.rgb);
 
+    // feedback
     return min(vec3(1.0), add(combined, vec3(0.015)));
   });
 
-  // ── FBO scene — orthographic quad, processes every pixel ──
+  // FBO full screen quad
   const fboScene = new THREE.Scene();
   const fboCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
 
@@ -134,30 +110,26 @@ export const SetupFluidSim = (
 
   const geo = new THREE.PlaneGeometry(2, 2);
 
-  // Flip UVs for WebGPU read-back consistency
+  // flip UV for WebGPU readback
   const uvAttr = geo.attributes.uv;
   for (let i = 0; i < uvAttr.count; i++) {
     uvAttr.setY(i, 1.0 - uvAttr.getY(i));
   }
 
-  const fboQuad = new THREE.Mesh(geo, mat);
-  fboScene.add(fboQuad);
+  const quad = new THREE.Mesh(geo, mat);
+  fboScene.add(quad);
 
-  // ── Update — called every frame ──
+  // update each frame
   const update = (trailTexture: THREE.Texture) => {
-    // Point shader at last frame
     prevNode.value = targetA.texture;
     inputNode.value = trailTexture;
 
-    // Render fluid pass into targetB
     renderer.setRenderTarget(targetB);
     renderer.render(fboScene, fboCamera);
     renderer.setRenderTarget(null);
 
-    // maskNode points at fresh result
     maskNode.value = targetB.texture;
 
-    // Swap — B becomes new A next frame
     const temp = targetA;
     targetA = targetB;
     targetB = temp;

@@ -44,6 +44,7 @@ const Uniforms = {
   uFrequency: uniform(50),
   uScale: uniform(6),
   uSpeed: uniform(1),
+  uResolution: uniform(new THREE.Vector2(innerWidth, innerHeight)),
 };
 
 pane.addBinding(Uniforms.uFrequency, "value", {
@@ -65,7 +66,7 @@ pane.addBinding(Uniforms.uSpeed, "value", {
   label: "Speed",
 });
 
-const MouseTrail = SetupMouseTrail({ width: 512, height: 512 });
+const MouseTrail = SetupMouseTrail({ width: 512, height: 512 * innerHeight / innerWidth });
 main.appendChild(MouseTrail.canvas);
 
 // CanvasTexture wraps the trail canvas
@@ -97,7 +98,13 @@ const { SceneA, CameraA, SceneB, CameraB, targetB, renderSceneBToTarget } =
   });
 
 // Fluid sim
-const FluidSim = SetupFluidSim(renderer, innerWidth, innerHeight, Uniforms);
+const FluidSim = SetupFluidSim(
+  renderer,
+  innerWidth,
+  innerHeight,
+  Uniforms,
+  // new THREE.Vector2(innerWidth, innerHeight),
+);
 
 let Time = new THREE.Timer();
 let PrevTime = Time.getElapsed();
@@ -114,13 +121,33 @@ const t1 = scenePass.getTextureNode("output");
 const t2 = texture(targetB.texture);
 const maskNode = FluidSim.maskNode;
 
-renderPipeline.outputNode = Fn(() => {
-  const flippedUV = vec2(uv().x, uv().y.oneMinus());
+renderPipeline.outputNode = t1;
 
-  const mask = maskNode.sample(flippedUV).r.oneMinus();
+// renderPipeline.outputNode = Fn(() => {
+//   const screenUV = uv();
+//   const resolution = Uniforms.uResolution;
 
-  return mix(t1,t2,mask);
-})();
+//   const aspect = resolution.x.div(resolution.y);
+
+//   // center UV to -0.5 → 0.5
+//   let correctedUV = screenUV.sub(vec2(0.5));
+
+//   // squash X by aspect ratio
+//   correctedUV = vec2(correctedUV.x.div(aspect), correctedUV.y);
+
+//   // back to 0 → 1 space
+//   correctedUV = correctedUV.add(vec2(0.5));
+
+//   // flip Y because render target is flipped
+//   const flippedUV = vec2(correctedUV.x, correctedUV.y.oneMinus());
+
+//   const mask = maskNode.sample(flippedUV).r.oneMinus();
+
+//   // return mix(t1,t2,mask);
+//   return maskNode.sample(flippedUV);
+//   // return vec4(flippedUV,0,1)
+//   // return maskNode;
+// })();
 
 function animate() {
   const CurrentTime = Time.getElapsed();
