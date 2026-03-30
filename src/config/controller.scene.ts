@@ -4,6 +4,19 @@ import { Pane } from "tweakpane";
 import * as THREE from "three/webgpu";
 import { fitModelToView } from "../utils";
 import { createBackgroundPlane } from "./background";
+import {
+  Fn,
+  mix,
+  positionLocal,
+  positionWorld,
+  smoothstep,
+  step,
+  time,
+  uv,
+  vec3,
+  vec4,
+} from "three/tsl";
+import { perlin2D } from "../noises/fbm";
 
 const SceneA = new THREE.Scene();
 const SceneB = new THREE.Scene();
@@ -38,6 +51,7 @@ export const SetupControllers = ({
   GLB,
   renderer,
   pane,
+  Uniforms,
 }: {
   width: number;
   height: number;
@@ -86,8 +100,13 @@ export const SetupControllers = ({
   setupLights(SceneA);
   setupLights(SceneB);
 
-  createBackgroundPlane(SceneA, CameraA, Tweeks.C1BG);
-  createBackgroundPlane(SceneB, CameraB, Tweeks.C2BG);
+  const { material: BG1Material } = createBackgroundPlane(
+    SceneA,
+    CameraA,
+    Tweeks.C1BG,
+    Uniforms,
+  );
+  createBackgroundPlane(SceneB, CameraB, Tweeks.C2BG, Uniforms);
 
   let C1: THREE.Group<THREE.Object3DEventMap> | null,
     C2: THREE.Group<THREE.Object3DEventMap> | null;
@@ -99,7 +118,7 @@ export const SetupControllers = ({
   GLB.load("/models/controller-permian.glb", (glb) => {
     C1 = glb.scene;
 
-    SceneA.add(C1);
+    // SceneA.add(C1);
 
     // ✨ Fit to view
     fitModelToView(C1, CameraA, width, height);

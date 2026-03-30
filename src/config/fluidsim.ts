@@ -10,7 +10,7 @@ import {
   sub,
   mul,
   min,
-  time
+  time,
 } from "three/tsl";
 import { MeshBasicNodeMaterial } from "three/webgpu";
 import { fbm } from "../noises/fbm";
@@ -27,7 +27,6 @@ export const SetupFluidSim = (
   height: number,
   Uniforms: uniforms,
 ): FluidSimReturn => {
-
   // ping pong render targets
   const opts: THREE.RenderTargetOptions = {
     minFilter: THREE.LinearFilter,
@@ -61,16 +60,14 @@ export const SetupFluidSim = (
     //   width < height ? vec2(1.0, 1.0 / aspect) : vec2(aspect, 1.0);
 
     // FBM noise displacement
-    const noiseVal = fbm(
-      vec3(
-        mul(uvCoord, Uniforms.uFrequency),
-        time.mul(0.001).mul(Uniforms.uSpeed),
-      ),
+    const noiseX = fbm(
+      vec2(mul(vec2(uvCoord.x.mul(uvCoord.y), uvCoord.y), Uniforms.uFrequency)),
+    );
+    const noiseY = fbm(
+      vec2(mul(vec2(uvCoord.x, uvCoord.y.mul(uvCoord.x)), Uniforms.uFrequency)),
     );
 
-    const disp = noiseVal
-      // .mul(aspectVec)
-      .mul(float(0.001).mul(Uniforms.uScale));
+    const disp = vec2(noiseX, noiseY).mul(float(0.001).mul(Uniforms.uScale));
 
     // darken blend helper
     const blendDarken = Fn(

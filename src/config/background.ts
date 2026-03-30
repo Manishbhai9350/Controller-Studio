@@ -1,6 +1,22 @@
-import { abs, color, float, Fn, fract, length, mix, uv, vec3 } from "three/tsl";
+import {
+  abs,
+  attribute,
+  color,
+  float,
+  Fn,
+  fract,
+  length,
+  mix,
+  positionLocal,
+  positionWorld,
+  time,
+  uv,
+  varying,
+  vec3,
+  vec4,
+} from "three/tsl";
 import * as THREE from "three/webgpu";
-import { fbm } from "../noises/fbm";
+import { fbm, perlin2D } from "../noises/fbm";
 import { smoothstep } from "three/src/math/MathUtils.js";
 
 const OffsetZ = 5;
@@ -9,6 +25,7 @@ export const createBackgroundPlane = (
   scene: THREE.Scene,
   camera: THREE.PerspectiveCamera,
   bgColor: string,
+  Uniforms,
 ) => {
   // visible camera size at distance
   const fov = THREE.MathUtils.degToRad(camera.fov);
@@ -17,7 +34,7 @@ export const createBackgroundPlane = (
   const viewHeight = 2 * Math.tan(fov / 2) * dist;
   const viewWidth = viewHeight * camera.aspect;
 
-  const geometry = new THREE.PlaneGeometry(viewWidth, viewHeight);
+  const geometry = new THREE.PlaneGeometry(viewWidth, viewHeight, 100, 100);
 
   const finalColor = Fn(() => {
     // uniforms
@@ -45,12 +62,23 @@ export const createBackgroundPlane = (
   })();
 
   const material = new THREE.MeshBasicNodeMaterial();
-  material.colorNode = finalColor;
+  material.colorNode = Fn(() => {
+    const z = perlin2D(uv().mul(Uniforms.uFrequency).add(time))
+      .mul(Uniforms.uScale)
+      .mul(0.2);
+
+    const c = smoothstep(0.4, 0.6,z);
+
+    // const color = mix();
+
+    return vec4(c, 0, 0, 1);
+  })();
 
   const mesh = new THREE.Mesh(geometry, material);
+
   mesh.position.z = -OffsetZ; // behind model
 
   scene.add(mesh);
 
-  return { mesh };
+  return { mesh, material };
 };

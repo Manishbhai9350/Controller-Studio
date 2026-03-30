@@ -43,32 +43,35 @@ renderer.setPixelRatio(devicePixelRatio);
 await renderer.init();
 
 const Uniforms = {
-  uFrequency: uniform(50),
-  uScale: uniform(6),
+  // uFrequency: uniform(100),
+  // uScale: uniform(4.5),
+  // uFrequency: uniform(25),
+  // uScale: uniform(10),
+  uFrequency: uniform(7),
+  uScale: uniform(50),
   uSpeed: uniform(1),
   uResolution: uniform(new THREE.Vector2(innerWidth, innerHeight)),
+
 };
 
 pane.addBinding(Uniforms.uFrequency, "value", {
   min: 0,
-  max: 100,
-  step: 0.1,
+  // max: 100,
+  max: 20,
+  step: 0.01,
   label: "Frequency",
 });
 pane.addBinding(Uniforms.uScale, "value", {
   min: 0,
-  max: 10,
+  max: 50,
   step: 0.001,
   label: "Scale",
 });
-pane.addBinding(Uniforms.uSpeed, "value", {
-  min: 0,
-  max: 1000,
-  step: 0.001,
-  label: "Speed",
-});
 
-const MouseTrail = SetupMouseTrail({ width: 512, height: 512 * innerHeight / innerWidth });
+const MouseTrail = SetupMouseTrail({
+  width: 512,
+  height: (512 * innerHeight) / innerWidth,
+});
 main.appendChild(MouseTrail.canvas);
 
 // CanvasTexture wraps the trail canvas
@@ -97,6 +100,7 @@ const { SceneA, CameraA, SceneB, CameraB, targetB, renderSceneBToTarget } =
     GLB,
     renderer,
     pane,
+    Uniforms
   });
 
 // Fluid sim
@@ -111,7 +115,7 @@ const FluidSim = SetupFluidSim(
 let Time = new THREE.Timer();
 let PrevTime = Time.getElapsed();
 
-// new OrbitControls(CameraA, Canvas3D);
+new OrbitControls(CameraA, Canvas3D);
 // new OrbitControls(CameraB, Canvas3D);
 
 const renderPipeline = new THREE.RenderPipeline(renderer);
@@ -123,8 +127,9 @@ const t1 = scenePass.getTextureNode("output");
 const t2 = texture(targetB.texture);
 const maskNode = FluidSim.maskNode;
 
+renderPipeline.outputNode = t1;
 // renderPipeline.outputNode = maskNode.sample(vec2(uv().x,uv().y.oneMinus()));
-renderPipeline.outputNode = mix(t1,t2,smoothstep(.35,.65,maskNode.sample(vec2(uv().x,uv().y.oneMinus())).r.oneMinus()));
+// renderPipeline.outputNode = mix(t1,t2,smoothstep(.35,.65,maskNode.sample(vec2(uv().x,uv().y.oneMinus())).r.oneMinus()));
 
 // renderPipeline.outputNode = Fn(() => {
 //   const screenUV = uv();
@@ -152,10 +157,18 @@ renderPipeline.outputNode = mix(t1,t2,smoothstep(.35,.65,maskNode.sample(vec2(uv
 //   // return maskNode;
 // })();
 
+let cameSet = false;
+
 function animate() {
   const CurrentTime = Time.getElapsed();
   const Delta = CurrentTime - PrevTime;
   PrevTime = CurrentTime;
+
+  // if (!cameSet) {
+  //   CameraA.position.set(-5,5,5);
+  //   CameraA.lookAt(new THREE.Vector3(0, 0, 0));
+  //   cameSet = true;
+  // }
 
   MouseTrail.update();
   trailTexture.needsUpdate = true;
