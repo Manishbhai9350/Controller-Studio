@@ -5,6 +5,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Controller Studio</title>
+    <link rel="stylesheet" href="/overlay.css" />
   </head>
   <body>
     <main>
@@ -13,6 +14,7 @@
 
     <!-- UI overlay — lives on top of the canvas -->
     <div id="overlay">
+
       <!-- Corner brackets -->
       <div class="corner corner-tl"></div>
       <div class="corner corner-tr"></div>
@@ -61,6 +63,17 @@
         </div>
       </div>
 
+      <!-- Sound toggle — centered bottom, above bottom bar -->
+      <button id="sound-toggle" aria-label="Toggle sound">
+        <div class="snd-icon">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <span id="snd-label">Sound</span>
+      </button>
+
       <!-- Bottom bar -->
       <div class="bottom-bar">
         <div class="bottom-left">
@@ -84,8 +97,10 @@
           </div>
         </div>
       </div>
+
     </div>
 
+    <!-- Three.js scene -->
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

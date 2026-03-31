@@ -19,7 +19,14 @@ import type { uniforms } from "../types";
 interface FluidSimReturn {
   maskNode: ReturnType<typeof texture>;
   update: (trailTexture: THREE.Texture) => void;
+  resize: (width: number, height: number) => void; // 👈 add
 }
+
+const createTargets = (w: number, h: number, opts) => {
+  const a = new THREE.RenderTarget(w, h, opts);
+  const b = new THREE.RenderTarget(w, h, opts);
+  return { a, b };
+};
 
 export const SetupFluidSim = (
   renderer: THREE.WebGPURenderer,
@@ -27,6 +34,8 @@ export const SetupFluidSim = (
   height: number,
   Uniforms: uniforms,
 ): FluidSimReturn => {
+  let simWidth = width;
+  let simHeight = height;
   // ping pong render targets
   const opts: THREE.RenderTargetOptions = {
     minFilter: THREE.LinearFilter,
@@ -35,29 +44,29 @@ export const SetupFluidSim = (
     stencilBuffer: false,
   };
 
-  let targetA = new THREE.RenderTarget(width, height, opts);
-  let targetB = new THREE.RenderTarget(width, height, opts);
+  let { a: targetA, b: targetB } = createTargets(simWidth, simHeight, opts);
 
   // TSL bridge nodes
-  const prevNode = texture(targetA.texture);
-  const inputNode = texture(new THREE.Texture());
-  const maskNode = texture(targetA.texture);
-
+  const prevNode = texture(null as unknown as THREE.Texture);
+  const inputNode = texture(null as unknown as THREE.Texture);
+  const maskNode = texture(null as unknown as THREE.Texture);
+  prevNode.value = targetA.texture;
+  maskNode.value = targetA.texture;
   // fluid shader
   const fluidShader = Fn(() => {
     const uvCoord = uv();
 
     // aspect corrected UV so mask is not stretched
-    // const screenAspect = width / height;
+    // const screenAspect = simWidth / simHeight;
     // const correctedUV = vec2(
     //   uvCoord.x.mul(screenAspect).sub(float((screenAspect - 1.0) / 2.0)),
     //   uvCoord.y,
     // );
 
     // displacement aspect fix
-    // const aspect = height / width;
+    // const aspect = simHeight / simWidth;
     // const aspectVec =
-    //   width < height ? vec2(1.0, 1.0 / aspect) : vec2(aspect, 1.0);
+    //   simWidth < simHeight ? vec2(1.0, 1.0 / aspect) : vec2(aspect, 1.0);
 
     // FBM noise displacement
     const noiseX = fbm(
@@ -81,12 +90,28 @@ export const SetupFluidSim = (
     const texel3 = prevNode.sample(vec2(sub(uvCoord.x, disp.x), uvCoord.y));
     const texel4 = prevNode.sample(vec2(uvCoord.x, add(uvCoord.y, disp.y)));
     const texel5 = prevNode.sample(vec2(uvCoord.x, sub(uvCoord.y, disp.y)));
+    const texel6 = prevNode.sample(
+      vec2(add(uvCoord.x, disp.x), add(uvCoord.y, disp.y)),
+    );
+    const texel7 = prevNode.sample(
+      vec2(add(uvCoord.x, disp.x), sub(uvCoord.y, disp.y)),
+    );
+    const texel8 = prevNode.sample(
+      vec2(sub(uvCoord.x, disp.x), add(uvCoord.y, disp.y)),
+    );
+    const texel9 = prevNode.sample(
+      vec2(sub(uvCoord.x, disp.x), sub(uvCoord.y, disp.y)),
+    );
 
     const floodcolor = texel.rgb.toVar();
     floodcolor.assign(blendDarken(floodcolor, texel2.rgb));
     floodcolor.assign(blendDarken(floodcolor, texel3.rgb));
     floodcolor.assign(blendDarken(floodcolor, texel4.rgb));
     floodcolor.assign(blendDarken(floodcolor, texel5.rgb));
+    floodcolor.assign(blendDarken(floodcolor, texel6.rgb));
+    floodcolor.assign(blendDarken(floodcolor, texel7.rgb));
+    floodcolor.assign(blendDarken(floodcolor, texel8.rgb));
+    floodcolor.assign(blendDarken(floodcolor, texel9.rgb));
 
     // mouse trail input
     const flippedUV = vec2(uvCoord.x, sub(float(1.0), uvCoord.y));
@@ -98,7 +123,7 @@ export const SetupFluidSim = (
     // })
 
     // feedback
-    return min(vec3(1.0), add(combined, vec3(0.015)));
+    return min(vec3(1.0), add(combined, vec3(.04)));
     // return vec4(correctedUV,0,1);
   });
 
@@ -136,5 +161,23 @@ export const SetupFluidSim = (
     targetB = temp;
   };
 
-  return { maskNode, update };
+  const resize = (newWidth: number, newHeight: number) => {
+    simWidth = newWidth;
+    simHeight = newHeight;
+
+    // dispose old targets (VERY IMPORTANT)
+    targetA.dispose();
+    targetB.dispose();
+
+    // rebuild ping-pong buffers
+    const targets = createTargets(simWidth, simHeight, opts);
+    targetA = targets.a;
+    targetB = targets.b;
+
+    // reconnect textures to TSL nodes
+    prevNode.value = targetA.texture;
+    maskNode.value = targetA.texture;
+  };
+
+  return { maskNode, update, resize };
 };

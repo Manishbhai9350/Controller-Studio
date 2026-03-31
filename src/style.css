@@ -1,14 +1,11 @@
 /* ── Reset & Base ── */
-*,
-*::before,
-*::after {
+*, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-html,
-body {
+html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
@@ -24,57 +21,41 @@ canvas.threejs {
   display: block;
 }
 
-/* ── Overlay: sits on top of canvas, pointer-events off so mouse/touch pass through to canvas ── */
+/* ── Overlay: sits on top of canvas, pointer-events off so mouse/touch pass through ── */
 #overlay {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   overflow: hidden;
+}
+
+/*
+  --corner-inset  = corner bracket distance from viewport edge
+  --content-inset = content distance from viewport edge
+                    always larger than corner-inset + bracket size + gap
+*/
+:root {
+  --corner-inset:  clamp(14px, 3vw, 36px);
+  --content-inset: clamp(36px, 5.5vw, 56px);
 }
 
 /* ── Corner brackets ── */
 .corner {
   position: absolute;
-  width: clamp(12px, 2.5vw, 20px);
-  height: clamp(12px, 2.5vw, 20px);
+  width: clamp(14px, 2vw, 22px);
+  height: clamp(14px, 2vw, 22px);
 }
-.corner-tl {
-  top: clamp(8px, 2.5vw, 22px);
-  left: clamp(8px, 2.5vw, 22px);
-  border-top: 1.5px solid #2c2c2a;
-  border-left: 1.5px solid #2c2c2a;
-  border-radius: 1px 0 0 0;
-}
-.corner-tr {
-  top: clamp(8px, 2.5vw, 22px);
-  right: clamp(8px, 2.5vw, 22px);
-  border-top: 1.5px solid #2c2c2a;
-  border-right: 1.5px solid #2c2c2a;
-  border-radius: 0 1px 0 0;
-}
-.corner-bl {
-  bottom: clamp(8px, 2.5vw, 22px);
-  left: clamp(8px, 2.5vw, 22px);
-  border-bottom: 1.5px solid #2c2c2a;
-  border-left: 1.5px solid #2c2c2a;
-  border-radius: 0 0 0 1px;
-}
-.corner-br {
-  bottom: clamp(8px, 2.5vw, 22px);
-  right: clamp(8px, 2.5vw, 22px);
-  border-bottom: 1.5px solid #2c2c2a;
-  border-right: 1.5px solid #2c2c2a;
-  border-radius: 0 0 1px 0;
-}
+.corner-tl { top: var(--corner-inset);    left: var(--corner-inset);  border-top: 1.5px solid #2c2c2a; border-left: 1.5px solid #2c2c2a;  border-radius: 3px 0 0 0; }
+.corner-tr { top: var(--corner-inset);    right: var(--corner-inset); border-top: 1.5px solid #2c2c2a; border-right: 1.5px solid #2c2c2a; border-radius: 0 3px 0 0; }
+.corner-bl { bottom: var(--corner-inset); left: var(--corner-inset);  border-bottom: 1.5px solid #2c2c2a; border-left: 1.5px solid #2c2c2a;  border-radius: 0 0 0 3px; }
+.corner-br { bottom: var(--corner-inset); right: var(--corner-inset); border-bottom: 1.5px solid #2c2c2a; border-right: 1.5px solid #2c2c2a; border-radius: 0 0 3px 0; }
 
 /* ── Top bar ── */
 .top-bar {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  padding: clamp(12px, 2.5vw, 22px) clamp(16px, 4vw, 36px);
+  top: 0; left: 0; right: 0;
+  padding: clamp(22px, 4vh, 40px) var(--content-inset);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -101,7 +82,7 @@ canvas.threejs {
 
 .top-center {
   position: absolute;
-  top: clamp(14px, 2.5vw, 24px);
+  top: clamp(22px, 4vh, 40px);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -112,7 +93,7 @@ canvas.threejs {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #3b6d11;
+  background: #3B6D11;
 }
 .status-text {
   font-size: clamp(7px, 1vw, 9px);
@@ -129,13 +110,13 @@ canvas.threejs {
 .tech-pill {
   padding: 4px clamp(6px, 1vw, 10px);
   border-radius: 20px;
-  border: 0.5px solid #3b6d11;
-  color: #3b6d11;
+  border: 0.5px solid #3B6D11;
+  color: #3B6D11;
   font-size: clamp(7px, 0.9vw, 9px);
   font-weight: 600;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  background: #eaf3de;
+  background: #EAF3DE;
 }
 .year-tag {
   font-size: clamp(8px, 1vw, 10px);
@@ -146,7 +127,7 @@ canvas.threejs {
 /* ── Left side label ── */
 .left-side {
   position: absolute;
-  left: clamp(8px, 1.5vw, 22px);
+  left: calc(var(--content-inset) * 0.4);
   top: 50%;
   transform: translateY(-50%);
   display: flex;
@@ -171,7 +152,7 @@ canvas.threejs {
 /* ── Right side stats ── */
 .right-side {
   position: absolute;
-  right: clamp(10px, 2vw, 24px);
+  right: calc(var(--content-inset) * 0.4);
   top: 50%;
   transform: translateY(-50%);
   display: flex;
@@ -207,10 +188,8 @@ canvas.threejs {
 /* ── Bottom bar ── */
 .bottom-bar {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: clamp(12px, 2.5vw, 24px) clamp(16px, 4vw, 36px);
+  bottom: 0; left: 0; right: 0;
+  padding: clamp(22px, 4vh, 40px) var(--content-inset);
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -228,9 +207,7 @@ canvas.threejs {
   letter-spacing: -0.5px;
   line-height: 1.1;
 }
-.headline span {
-  color: #3b6d11;
-}
+.headline span { color: #3B6D11; }
 .tagline {
   font-size: clamp(8px, 1vw, 11px);
   color: #7a7568;
@@ -261,13 +238,8 @@ canvas.threejs {
   border-radius: 50%;
   flex-shrink: 0;
 }
-.dot-white {
-  background: #f0ece4;
-  border: 1px solid #b8b09a;
-}
-.dot-green {
-  background: #3b6d11;
-}
+.dot-white { background: #f0ece4; border: 1px solid #b8b09a; }
+.dot-green  { background: #3B6D11; }
 .variant-label {
   font-size: clamp(8px, 1vw, 10px);
   color: #5a5548;
@@ -291,7 +263,78 @@ canvas.threejs {
   text-transform: uppercase;
 }
 
-/* ── Responsive: hide less important elements on narrow screens ── */
+/* ── Sound toggle ── */
+#sound-toggle {
+  position: absolute;
+  bottom: clamp(22px, 4vh, 40px);
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: 0.5px solid #b8b09a;
+  border-radius: 20px;
+  padding: 5px 12px 5px 9px;
+  color: #7a7568;
+  font-family: inherit;
+  font-size: clamp(7px, 0.85vw, 9px);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  white-space: nowrap;
+}
+#sound-toggle:hover {
+  border-color: #3B6D11;
+  color: #3B6D11;
+}
+#sound-toggle.active {
+  border-color: #3B6D11;
+  color: #3B6D11;
+  background: #EAF3DE;
+}
+
+/* animated bars icon */
+.snd-icon {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 10px;
+}
+.snd-icon span {
+  display: block;
+  width: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  transform-origin: bottom;
+  transition: background 0.2s;
+}
+.snd-icon span:nth-child(1) { height: 4px; }
+.snd-icon span:nth-child(2) { height: 7px; }
+.snd-icon span:nth-child(3) { height: 10px; }
+.snd-icon span:nth-child(4) { height: 6px; }
+
+/* active: animate bars */
+#sound-toggle.active .snd-icon span:nth-child(1) { animation: bar 0.80s ease-in-out         infinite alternate; }
+#sound-toggle.active .snd-icon span:nth-child(2) { animation: bar 0.60s ease-in-out 0.10s   infinite alternate; }
+#sound-toggle.active .snd-icon span:nth-child(3) { animation: bar 0.90s ease-in-out 0.20s   infinite alternate; }
+#sound-toggle.active .snd-icon span:nth-child(4) { animation: bar 0.70s ease-in-out 0.05s   infinite alternate; }
+
+@keyframes bar {
+  from { transform: scaleY(0.3); }
+  to   { transform: scaleY(1);   }
+}
+
+/* muted: flat bars */
+#sound-toggle:not(.active) .snd-icon span {
+  height: 2px !important;
+  animation: none !important;
+  opacity: 0.5;
+}
+
+/* ── Responsive ── */
 @media (max-width: 480px) {
   .left-side,
   .right-side,
@@ -299,16 +342,10 @@ canvas.threejs {
   .year-tag {
     display: none;
   }
-  .top-right {
-    gap: 6px;
-  }
+  .top-right { gap: 6px; }
 }
 
 @media (max-width: 360px) {
-  .tech-pill {
-    display: none;
-  }
-  .brand-sub {
-    display: none;
-  }
+  .tech-pill { display: none; }
+  .brand-sub  { display: none; }
 }

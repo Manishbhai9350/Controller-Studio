@@ -12,19 +12,27 @@ interface MouseTrailReturn {
   update: () => void;
 }
 
+interface MouseTrailReturn {
+  canvas: HTMLCanvasElement;
+  update: () => void;
+  resize: (width: number, height: number) => void; // 👈 new
+}
+
 export const SetupMouseTrail = ({
   width,
   height,
 }: MouseTrailOptions): MouseTrailReturn => {
+  let canvasWidth = width;
+  let canvasHeight = height;
   // Canvas setup
   const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
   const ctx = canvas.getContext("2d")!;
 
   // Fill white to start
   ctx.fillStyle = "white";
-  ctx.fillRect(0, 0, width, height);
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
   // State
   let mouse: { x: number; y: number } | null = null;
@@ -69,12 +77,12 @@ export const SetupMouseTrail = ({
     opacity = LERP(targetOpacity, opacity, LerpFactor);
 
     ctx.fillStyle = "white";
-    ctx.fillRect(0, 0, width, height);
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
     // if (opacity > 0.01) {
     ctx.beginPath();
-    ctx.moveTo(lastMouse.x * width, lastMouse.y * height);
-    ctx.lineTo(mouse.x * width, mouse.y * height);
+    ctx.moveTo(lastMouse.x * canvasWidth, lastMouse.y * canvasHeight);
+    ctx.lineTo(mouse.x * canvasWidth, mouse.y * canvasHeight);
     ctx.lineCap = "round";
     ctx.lineWidth = 100;
     ctx.strokeStyle = `rgba(0, 1, 0, ${opacity})`;
@@ -82,5 +90,17 @@ export const SetupMouseTrail = ({
     ctx.stroke();
     // }
   };
-  return { canvas, update };
+
+  const resize = (newWidth: number, newHeight: number) => {
+    canvasWidth = newWidth;
+    canvasHeight = newHeight;
+
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+
+    // Important: reset canvas after resize
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+  };
+  return { canvas, update, resize };
 };

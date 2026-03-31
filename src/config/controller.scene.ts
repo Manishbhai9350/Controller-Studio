@@ -50,7 +50,7 @@ export const SetupControllers = ({
   height,
   GLB,
   renderer,
-  pane
+  pane,
 }: {
   width: number;
   height: number;
@@ -103,9 +103,9 @@ export const SetupControllers = ({
     SceneA,
     CameraA,
     Tweeks.C1BG,
-    -.1,
+    -0.1,
   );
-  createBackgroundPlane(SceneB, CameraB, Tweeks.C2BG, .1);
+  createBackgroundPlane(SceneB, CameraB, Tweeks.C2BG, 0.1);
 
   let C1: THREE.Group<THREE.Object3DEventMap> | null,
     C2: THREE.Group<THREE.Object3DEventMap> | null;
@@ -173,6 +173,20 @@ export const SetupControllers = ({
     renderer.setRenderTarget(null);
   };
 
+  const resize = (innerWidth: number, innerHeight: number) => {
+    const aspect = innerWidth / innerHeight;
+
+    // --- Update Cameras ---
+    [CameraA, CameraB].forEach((Camera) => {
+      Camera.aspect = aspect;
+      Camera.updateProjectionMatrix();
+    });
+
+    // --- Update Render Targets ---
+    targetA.setSize(innerWidth, innerHeight);
+    targetB.setSize(innerWidth, innerHeight);
+  };
+
   return {
     SceneA,
     SceneB,
@@ -180,5 +194,6 @@ export const SetupControllers = ({
     CameraB,
     targetB,
     renderSceneBToTarget,
+    resize,
   };
 };

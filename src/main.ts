@@ -3,9 +3,11 @@ import "./style.css";
 import * as THREE from "three/webgpu";
 import {
   abs,
+  dot,
   float,
   Fn,
   mix,
+  mul,
   pass,
   smoothstep,
   step,
@@ -14,6 +16,7 @@ import {
   uniform,
   uv,
   vec2,
+  vec3,
   vec4,
 } from "three/tsl";
 import { SetupMouseTrail } from "./config/mouse";
@@ -25,6 +28,8 @@ import {
 import { SetupFluidSim } from "./config/fluidsim";
 import { Pane } from "tweakpane";
 import { SetupControllers } from "./config/controller.scene";
+import { initSound } from "./config/audio.engine";
+import { perlin2D } from "./noises/fbm";
 
 const main = document.body.querySelector("main");
 const Canvas3D: HTMLCanvasElement | null | undefined =
@@ -34,7 +39,10 @@ if (!main || !Canvas3D) {
   throw new Error("Something Went Wrong!");
 }
 
-const pane = new Pane();
+initSound();
+
+const pane = new Pane({});
+// pane.dispose();
 
 const renderer = new THREE.WebGPURenderer({
   antialias: true,
@@ -53,9 +61,20 @@ const Uniforms = {
   // uScale: uniform(8),
   uProgress: uniform(0),
   uSpeed: uniform(1),
+  uFallOff: uniform(0.01),
   uResolution: uniform(new THREE.Vector2(innerWidth, innerHeight)),
+  C1BG: uniform(new THREE.Color("#ceccc7")),
+  // C2BG: "#F0ECE4",
+  C2BG: uniform(new THREE.Color("#ffc654")),
 };
 
+pane.addBinding(Uniforms.uFallOff, "value", {
+  min: 0,
+  // max: 100,
+  max: 1,
+  step: 0.0001,
+  label: "FallOff",
+});
 pane.addBinding(Uniforms.uFrequency, "value", {
   min: 0,
   // max: 100,
@@ -101,14 +120,21 @@ GLB.setDRACOLoader(Draco);
 
 // Controllers
 
-const { SceneA, CameraA, SceneB, CameraB, targetB, renderSceneBToTarget } =
-  SetupControllers({
-    width: innerWidth,
-    height: innerHeight,
-    GLB,
-    renderer,
-    pane,
-  });
+const {
+  SceneA,
+  CameraA,
+  SceneB,
+  CameraB,
+  targetB,
+  renderSceneBToTarget,
+  resize: ResizeControllers,
+} = SetupControllers({
+  width: innerWidth,
+  height: innerHeight,
+  GLB,
+  renderer,
+  pane,
+});
 
 // Fluid sim
 const FluidSim = SetupFluidSim(
@@ -135,11 +161,23 @@ const t2 = texture(targetB.texture);
 const maskNode = FluidSim.maskNode;
 
 // renderPipeline.outputNode = t1;
-// renderPipeline.outputNode = maskNode.sample(vec2(uv().x,uv().y.oneMinus()));
 renderPipeline.outputNode = Fn(() => {
   const mask = maskNode.sample(vec2(uv().x, uv().y.oneMinus())).r.oneMinus().r;
-  return mix(t1, t2, smoothstep(0.35, 0.65, abs(float(Uniforms.uProgress).sub(mask))));
+
+
+  // const nosiedVal = perlin2D(mul(uv().add(mask),2)).mul(.005);
+  const nosiedVal = perlin2D(mul(uv().add(mask),2)).mul(.005);
+  const t1Base = t1.sample(uv().add(vec2(nosiedVal)))
+  const luminance = dot(t1Base.rgb, vec3(0.299, 0.587, 0.114));
+  const Lumed = vec4(vec3(luminance), 1).mul(1.05);
+
+  // return Lumed;
+  return mix(t1, Lumed, mask.oneMinus());
 })();
+// renderPipeline.outputNode = Fn(() => {
+//   const mask = maskNode.sample(vec2(uv().x, uv().y.oneMinus())).r.oneMinus().r;
+//   return mix(t1, t2, smoothstep(0.35, 0.65, abs(float(Uniforms.uProgress).sub(mask))));
+// })();
 
 // renderPipeline.outputNode = Fn(() => {
 //   const screenUV = uv();
@@ -197,3 +235,15 @@ function animate() {
 }
 
 animate();
+
+function Resize() {
+  const aspect = innerWidth / innerHeight;
+  // MouseTrail.canvas.width = 512;
+  // MouseTrail.canvas.height = 512 / aspect;
+
+  FluidSim.resize(window.innerWidth, window.innerHeight);
+  ResizeControllers(innerWidth, innerHeight);
+  MouseTrail.resize(512, 512 / aspect);
+}
+
+window.addEventListener("resize", Resize);
