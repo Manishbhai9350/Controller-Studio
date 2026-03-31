@@ -24,22 +24,24 @@ declare global {
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface SoundState {
-  ctx:      AudioContext | null;
-  isOn:     boolean;
-  lastX:    number;
-  lastY:    number;
-  lastTime: number;
+  ctx:       AudioContext | null;
+  isOn:      boolean;
+  lastX:     number;
+  lastY:     number;
+  lastTime:  number;
+  variant:   'smooth' | 'silky' | 'crisp' | 'gritty' | 'textured' | 'velvety';
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 export function initSound(): void {
   const state: SoundState = {
-    ctx:      null,
-    isOn:     false,
-    lastX:    0,
-    lastY:    0,
-    lastTime: 0,
+    ctx:       null,
+    isOn:      false,
+    lastX:     0,
+    lastY:     0,
+    lastTime:  0,
+    variant:   'smooth',
   };
 
   const btn = document.getElementById('sound-toggle') as HTMLButtonElement | null;
@@ -80,60 +82,48 @@ export function initSound(): void {
   //    → gain: much quieter, slightly longer tail (icy sustain)
   //    Volume scales with velocity² so it only appears on faster moves
 
-  function triggerScrub(velocity: number): void {
+  // ── Smooth Paper (default) ───────────────────────────────────────────────
+  // Warm, gentle, slightly filtered
+  function triggerScrubSmooth(velocity: number): void {
     const ctx = getCtx();
     if (!ctx) return;
     if (ctx.state === 'suspended') void ctx.resume();
 
     const now = ctx.currentTime;
-
-    // Long, soft duration — doesn't snap on or off
-    // Slow mouse = ~120ms, fast mouse = ~180ms
     const duration = 0.12 + velocity * 0.06;
-
-    // ── Noise buffer ─────────────────────────────────────────────────────
-    // Slightly longer than duration for a clean fade-out tail
     const bufLen = Math.ceil(ctx.sampleRate * (duration + 0.05));
-    const buf    = ctx.createBuffer(1, bufLen, ctx.sampleRate);
-    const data   = buf.getChannelData(0);
+    const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+    const data = buf.getChannelData(0);
 
-    // Approximate pink noise by averaging neighbouring white noise samples
-    // Pink noise has more energy in low frequencies — inherently softer/warmer
+    // Pink noise
     let b0 = 0, b1 = 0, b2 = 0;
     for (let i = 0; i < bufLen; i++) {
       const white = Math.random() * 2 - 1;
       b0 = 0.99886 * b0 + white * 0.0555179;
       b1 = 0.99332 * b1 + white * 0.0750759;
       b2 = 0.96900 * b2 + white * 0.1538520;
-      data[i] = (b0 + b1 + b2 + white * 0.5362) * 0.11; // scale down
+      data[i] = (b0 + b1 + b2 + white * 0.5362) * 0.11;
     }
 
-    const src: AudioBufferSourceNode = ctx.createBufferSource();
+    const src = ctx.createBufferSource();
     src.buffer = buf;
 
-    // ── Single warm bandpass — the whole sound lives here ────────────────
-    // Wide Q (0.7) = very diffuse, not focused at all
-    // Centre ~250 Hz = warm, papery, not scratchy
-    const bp: BiquadFilterNode = ctx.createBiquadFilter();
+    const bp = ctx.createBiquadFilter();
     bp.type = 'bandpass';
-    bp.frequency.value = 220 + velocity * 60; // 220–280 Hz, barely shifts
-    bp.Q.value = 0.7;                          // very wide — just a warm colour
+    bp.frequency.value = 220 + velocity * 60;
+    bp.Q.value = 0.7;
 
-    // Soft lowpass on top — rolls off anything above 800 Hz completely
-    const lp: BiquadFilterNode = ctx.createBiquadFilter();
+    const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
     lp.frequency.value = 800;
-    lp.Q.value = 0.4; // gentle slope
+    lp.Q.value = 0.4;
 
-    // ── Gain envelope — slow swell, long soft fade ────────────────────────
-    // No snap, no click — just a whisper that appears and dissolves
-    const vol = Math.min(velocity * 0.09, 0.07); // very quiet ceiling
-
-    const gain: GainNode = ctx.createGain();
+    const vol = Math.min(velocity * 0.09, 0.07);
+    const gain = ctx.createGain();
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(vol, now + 0.035);         // 35ms soft swell
-    gain.gain.setValueAtTime(vol, now + duration * 0.5);         // hold midpoint
-    gain.gain.linearRampToValueAtTime(0, now + duration);        // linear fade out — softer than exponential
+    gain.gain.linearRampToValueAtTime(vol, now + 0.035);
+    gain.gain.setValueAtTime(vol, now + duration * 0.5);
+    gain.gain.linearRampToValueAtTime(0, now + duration);
 
     src.connect(bp);
     bp.connect(lp);
@@ -142,6 +132,313 @@ export function initSound(): void {
 
     src.start(now);
     src.stop(now + duration + 0.02);
+  }
+
+  // ── Silky Paper (very smooth, higher pitched) ────────────────────────────
+  // Softer, more silk than paper
+  function triggerScrubSilky(velocity: number): void {
+    const ctx = getCtx();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') void ctx.resume();
+
+    const now = ctx.currentTime;
+    const duration = 0.14 + velocity * 0.07;
+    const bufLen = Math.ceil(ctx.sampleRate * (duration + 0.08));
+    const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+
+    // Very pink noise (softer)
+    let b0 = 0, b1 = 0, b2 = 0;
+    for (let i = 0; i < bufLen; i++) {
+      const white = Math.random() * 2 - 1;
+      b0 = 0.99900 * b0 + white * 0.0400000;
+      b1 = 0.99400 * b1 + white * 0.0600000;
+      b2 = 0.97000 * b2 + white * 0.1200000;
+      data[i] = (b0 + b1 + b2 + white * 0.3) * 0.08;
+    }
+
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+
+    // Centered lower for that velvet feel
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 180 + velocity * 40;
+    bp.Q.value = 0.5;
+
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 700;
+    lp.Q.value = 0.3;
+
+    const vol = Math.min(velocity * 0.08, 0.05);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(vol, now + 0.04);
+    gain.gain.setValueAtTime(vol, now + duration * 0.6);
+    gain.gain.linearRampToValueAtTime(0, now + duration);
+
+    src.connect(bp);
+    bp.connect(lp);
+    lp.connect(gain);
+    gain.connect(ctx.destination);
+
+    src.start(now);
+    src.stop(now + duration + 0.03);
+  }
+
+  // ── Crisp Paper (more texture, sharper attack) ────────────────────────────
+  // Higher frequencies, defined texture
+  function triggerScrubCrisp(velocity: number): void {
+    const ctx = getCtx();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') void ctx.resume();
+
+    const now = ctx.currentTime;
+    const duration = 0.11 + velocity * 0.05;
+    const bufLen = Math.ceil(ctx.sampleRate * (duration + 0.04));
+    const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+
+    // Less filtered (more white)
+    let b0 = 0, b1 = 0, b2 = 0;
+    for (let i = 0; i < bufLen; i++) {
+      const white = Math.random() * 2 - 1;
+      b0 = 0.99800 * b0 + white * 0.0800000;
+      b1 = 0.99200 * b1 + white * 0.1000000;
+      b2 = 0.96500 * b2 + white * 0.1800000;
+      data[i] = (b0 + b1 + b2 + white * 0.6) * 0.12;
+    }
+
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+
+    // Slightly higher center
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 280 + velocity * 80;
+    bp.Q.value = 0.9;
+
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 1000;
+    lp.Q.value = 0.5;
+
+    const vol = Math.min(velocity * 0.10, 0.08);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(vol, now + 0.025);
+    gain.gain.setValueAtTime(vol, now + duration * 0.4);
+    gain.gain.linearRampToValueAtTime(0, now + duration);
+
+    src.connect(bp);
+    bp.connect(lp);
+    lp.connect(gain);
+    gain.connect(ctx.destination);
+
+    src.start(now);
+    src.stop(now + duration + 0.015);
+  }
+
+  // ── Gritty Paper (texture-rich, more abrasive) ────────────────────────────
+  // Broader frequency range, more paper fibers
+  function triggerScrubGritty(velocity: number): void {
+    const ctx = getCtx();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') void ctx.resume();
+
+    const now = ctx.currentTime;
+    const duration = 0.13 + velocity * 0.065;
+    const bufLen = Math.ceil(ctx.sampleRate * (duration + 0.06));
+    const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+
+    // Mix of white and pink for texture
+    let b0 = 0, b1 = 0, b2 = 0;
+    for (let i = 0; i < bufLen; i++) {
+      const white = Math.random() * 2 - 1;
+      b0 = 0.99880 * b0 + white * 0.0600000;
+      b1 = 0.99330 * b1 + white * 0.0800000;
+      b2 = 0.96900 * b2 + white * 0.1600000;
+      data[i] = (b0 + b1 + b2 + white * 0.55) * 0.115;
+    }
+
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+
+    // Twin bandpass for more texture
+    const bp1 = ctx.createBiquadFilter();
+    bp1.type = 'bandpass';
+    bp1.frequency.value = 250 + velocity * 70;
+    bp1.Q.value = 1.2;
+
+    const bp2 = ctx.createBiquadFilter();
+    bp2.type = 'bandpass';
+    bp2.frequency.value = 500 + velocity * 120;
+    bp2.Q.value = 0.8;
+
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 900;
+    lp.Q.value = 0.6;
+
+    const vol = Math.min(velocity * 0.095, 0.075);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(vol, now + 0.032);
+    gain.gain.setValueAtTime(vol, now + duration * 0.5);
+    gain.gain.linearRampToValueAtTime(0, now + duration);
+
+    src.connect(bp1);
+    bp1.connect(bp2);
+    bp2.connect(lp);
+    lp.connect(gain);
+    gain.connect(ctx.destination);
+
+    src.start(now);
+    src.stop(now + duration + 0.02);
+  }
+
+  // ── Textured Paper (multi-layer, most organic) ────────────────────────────
+  // Complex frequency response, feels most like real paper
+  function triggerScrubTextured(velocity: number): void {
+    const ctx = getCtx();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') void ctx.resume();
+
+    const now = ctx.currentTime;
+    const duration = 0.15 + velocity * 0.07;
+    const bufLen = Math.ceil(ctx.sampleRate * (duration + 0.07));
+    const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+
+    // Rich pink noise
+    let b0 = 0, b1 = 0, b2 = 0;
+    for (let i = 0; i < bufLen; i++) {
+      const white = Math.random() * 2 - 1;
+      b0 = 0.99886 * b0 + white * 0.0555179;
+      b1 = 0.99332 * b1 + white * 0.0750759;
+      b2 = 0.96900 * b2 + white * 0.1538520;
+      data[i] = (b0 + b1 + b2 + white * 0.5362) * 0.11;
+    }
+
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+
+    // Multiple bandpass stages for organic feel
+    const bp1 = ctx.createBiquadFilter();
+    bp1.type = 'bandpass';
+    bp1.frequency.value = 200 + velocity * 50;
+    bp1.Q.value = 0.6;
+
+    const bp2 = ctx.createBiquadFilter();
+    bp2.type = 'bandpass';
+    bp2.frequency.value = 450 + velocity * 100;
+    bp2.Q.value = 0.7;
+
+    const bp3 = ctx.createBiquadFilter();
+    bp3.type = 'bandpass';
+    bp3.frequency.value = 750;
+    bp3.Q.value = 0.5;
+
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 1200;
+    lp.Q.value = 0.5;
+
+    const vol = Math.min(velocity * 0.088, 0.068);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(vol, now + 0.04);
+    gain.gain.setValueAtTime(vol, now + duration * 0.5);
+    gain.gain.linearRampToValueAtTime(0, now + duration);
+
+    src.connect(bp1);
+    bp1.connect(bp2);
+    bp2.connect(bp3);
+    bp3.connect(lp);
+    lp.connect(gain);
+    gain.connect(ctx.destination);
+
+    src.start(now);
+    src.stop(now + duration + 0.025);
+  }
+
+  // ── Velvety Paper (very soft, barely there) ──────────────────────────────
+  // Maximum softness, delicate
+  function triggerScrubVelvety(velocity: number): void {
+    const ctx = getCtx();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') void ctx.resume();
+
+    const now = ctx.currentTime;
+    const duration = 0.16 + velocity * 0.08;
+    const bufLen = Math.ceil(ctx.sampleRate * (duration + 0.1));
+    const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+
+    // Ultra-soft pink noise
+    let b0 = 0, b1 = 0, b2 = 0;
+    for (let i = 0; i < bufLen; i++) {
+      const white = Math.random() * 2 - 1;
+      b0 = 0.99920 * b0 + white * 0.0300000;
+      b1 = 0.99500 * b1 + white * 0.0500000;
+      b2 = 0.97500 * b2 + white * 0.1000000;
+      data[i] = (b0 + b1 + b2 + white * 0.25) * 0.06;
+    }
+
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+
+    // Very low center freq for maximum velvet
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 160 + velocity * 30;
+    bp.Q.value = 0.4;
+
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 600;
+    lp.Q.value = 0.2;
+
+    const vol = Math.min(velocity * 0.07, 0.04);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(vol, now + 0.05);
+    gain.gain.setValueAtTime(vol, now + duration * 0.65);
+    gain.gain.linearRampToValueAtTime(0, now + duration);
+
+    src.connect(bp);
+    bp.connect(lp);
+    lp.connect(gain);
+    gain.connect(ctx.destination);
+
+    src.start(now);
+    src.stop(now + duration + 0.04);
+  }
+
+  // ── Main trigger dispatcher ────────────────────────────────────────────────
+  function triggerScrub(velocity: number): void {
+    switch (state.variant) {
+      case 'silky':
+        triggerScrubSilky(velocity);
+        break;
+      case 'crisp':
+        triggerScrubCrisp(velocity);
+        break;
+      case 'gritty':
+        triggerScrubGritty(velocity);
+        break;
+      case 'textured':
+        triggerScrubTextured(velocity);
+        break;
+      case 'velvety':
+        triggerScrubVelvety(velocity);
+        break;
+      case 'smooth':
+      default:
+        triggerScrubSmooth(velocity);
+    }
   }
 
   // ── Mouse velocity tracker ────────────────────────────────────────────────
@@ -176,4 +473,33 @@ export function initSound(): void {
     btn.classList.toggle('active', state.isOn);
     if (lbl) lbl.textContent = state.isOn ? 'Sound On' : 'Sound';
   });
+
+  // ── Sound variant selector ─────────────────────────────────────────────────
+  const variantContainer = document.getElementById('sound-variants') as HTMLDivElement | null;
+  if (variantContainer) {
+    variantContainer.innerHTML = '';
+    const variants: Array<'smooth' | 'silky' | 'crisp' | 'gritty' | 'textured' | 'velvety'> = [
+      'smooth',
+      'silky',
+      'crisp',
+      'gritty',
+      'textured',
+      'velvety',
+    ];
+
+    variants.forEach((variant) => {
+      const btn = document.createElement('button');
+      btn.textContent = variant.charAt(0).toUpperCase() + variant.slice(1);
+      btn.classList.add('variant-btn');
+      if (variant === state.variant) btn.classList.add('active');
+
+      btn.addEventListener('click', (): void => {
+        state.variant = variant;
+        document.querySelectorAll('.variant-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+
+      variantContainer.appendChild(btn);
+    });
+  }
 }

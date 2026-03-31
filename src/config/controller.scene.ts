@@ -51,6 +51,7 @@ export const SetupControllers = ({
   GLB,
   renderer,
   pane,
+  Uniforms
 }: {
   width: number;
   height: number;
@@ -99,13 +100,18 @@ export const SetupControllers = ({
   setupLights(SceneA);
   setupLights(SceneB);
 
-  const { material: BG1Material } = createBackgroundPlane(
+  const { material: BG1Material, resize: Resize1 } = createBackgroundPlane(
     SceneA,
     CameraA,
-    Tweeks.C1BG,
-    -0.1,
+    Uniforms.C1BG,
+    Uniforms.C1Line
   );
-  createBackgroundPlane(SceneB, CameraB, Tweeks.C2BG, 0.1);
+  const { resize: Resize2 } = createBackgroundPlane(
+    SceneB,
+    CameraB,
+    Uniforms.C2BG,
+    Uniforms.C2BG
+  );
 
   let C1: THREE.Group<THREE.Object3DEventMap> | null,
     C2: THREE.Group<THREE.Object3DEventMap> | null;
@@ -173,18 +179,21 @@ export const SetupControllers = ({
     renderer.setRenderTarget(null);
   };
 
-  const resize = (innerWidth: number, innerHeight: number) => {
-    const aspect = innerWidth / innerHeight;
+  const resize = (w: number, h: number) => {
+    const aspect = w / h;
 
     // --- Update Cameras ---
-    [CameraA, CameraB].forEach((Camera) => {
+    [CameraA, CameraB].forEach((Camera, i) => {
       Camera.aspect = aspect;
       Camera.updateProjectionMatrix();
+
+      [Resize1, Resize2][i](Camera.position.z);
+      fitModelToView([C1, C2][i], Camera, w, h);
     });
 
     // --- Update Render Targets ---
-    targetA.setSize(innerWidth, innerHeight);
-    targetB.setSize(innerWidth, innerHeight);
+    targetA.setSize(w, h);
+    targetB.setSize(w, h);
   };
 
   return {

@@ -25,17 +25,18 @@ const OffsetZ = 5;
 export const createBackgroundPlane = (
   scene: THREE.Scene,
   camera: THREE.PerspectiveCamera,
-  bgColor: string,
-  offset,
+  bgColor: THREE.UniformNode<'vec3',THREE.Vector3>,
+  LineColor: THREE.UniformNode<'vec3',THREE.Vector3>,
 ) => {
+  console.log(bgColor,LineColor)
   // visible camera size at distance
   const fov = THREE.MathUtils.degToRad(camera.fov);
-  const dist = camera.position.z + OffsetZ;
+  let dist = camera.position.z + OffsetZ;
 
-  const viewHeight = 2 * Math.tan(fov / 2) * dist;
-  const viewWidth = viewHeight * camera.aspect;
+  let viewHeight = 2 * Math.tan(fov / 2) * dist;
+  let viewWidth = viewHeight * camera.aspect;
 
-  const geometry = new THREE.PlaneGeometry(viewWidth, viewHeight, 100, 100);
+  let geometry = new THREE.PlaneGeometry(viewWidth, viewHeight, 100, 100);
 
   const finalColor = Fn(() => {
     // uniforms
@@ -49,14 +50,16 @@ export const createBackgroundPlane = (
     const radius = length(centeredUV);
 
     // your fbm function 👇
-    const n = perlin2D(vec2(centeredUV.mul(uFrequency)).add(time).mul(.3)).mul(uScale);
+    const n = perlin2D(vec2(centeredUV.mul(uFrequency)).add(time).mul(0.3)).mul(
+      uScale,
+    );
 
     // circular contour rings
     const rings = fract(radius.mul(uFrequency).add(n));
 
-    const lines = smoothstep(fract(n),.1,.5);
+    const lines = smoothstep(fract(n), 0.1, 0.5);
 
-    return mix(color(bgColor), color(bgColor).add(offset), lines);
+    return mix(bgColor, LineColor, lines);
     // return vec4(lines, 0, 0, 1);
   })();
 
@@ -80,5 +83,14 @@ export const createBackgroundPlane = (
 
   scene.add(mesh);
 
-  return { mesh, material };
+  const resize = (cameraZ = 0) => {
+    dist = cameraZ + OffsetZ;
+    viewHeight = 2 * Math.tan(fov / 2) * dist;
+    viewWidth = viewHeight * camera.aspect;
+    mesh.geometry.dispose();
+    geometry = new THREE.PlaneGeometry(viewWidth, viewHeight, 100, 100);
+    mesh.geometry = geometry;
+  };
+
+  return { mesh, material, resize };
 };

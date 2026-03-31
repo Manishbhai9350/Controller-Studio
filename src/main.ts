@@ -53,47 +53,92 @@ renderer.setPixelRatio(devicePixelRatio);
 await renderer.init();
 
 const Uniforms = {
-  // uFrequency: uniform(100),
-  // uScale: uniform(4.5),
   uFrequency: uniform(25),
   uScale: uniform(25),
-  // uFrequency: uniform(1),
-  // uScale: uniform(8),
   uProgress: uniform(0),
   uSpeed: uniform(1),
   uFallOff: uniform(0.01),
   uResolution: uniform(new THREE.Vector2(innerWidth, innerHeight)),
+
+  // Background colors
   C1BG: uniform(new THREE.Color("#ceccc7")),
-  // C2BG: "#F0ECE4",
   C2BG: uniform(new THREE.Color("#ffc654")),
+
+  // ✨ Line colors (slight variation)
+  C1Line: uniform(new THREE.Color("#b9b7b2")), // slightly darker/desaturated
+  C2Line: uniform(new THREE.Color("#e6a93d")), // slightly darker orange
+
+  // ✨ Luminance weights (human eye RGB sensitivity)
+  LumWeights: uniform(new THREE.Vector3(0.299, 0.587, 0.114)),
 };
 
-pane.addBinding(Uniforms.uFallOff, "value", {
-  min: 0,
-  // max: 100,
-  max: 1,
-  step: 0.0001,
-  label: "FallOff",
-});
-pane.addBinding(Uniforms.uFrequency, "value", {
-  min: 0,
-  // max: 100,
-  max: 20,
-  step: 0.01,
-  label: "Frequency",
-});
-pane.addBinding(Uniforms.uScale, "value", {
-  min: 0,
-  max: 50,
-  step: 0.001,
-  label: "Scale",
-});
-pane.addBinding(Uniforms.uProgress, "value", {
-  min: 0,
-  max: 1,
-  step: 0.001,
-  label: "Progress",
-});
+const Conf = {
+  C1BG: Uniforms.C1BG.value.getHexString(),
+  C2BG: Uniforms.C2BG.value.getHexString(),
+  C1Line: Uniforms.C1Line.value.getHexString(),
+  C2Line: Uniforms.C2Line.value.getHexString(),
+}
+
+// 🎨 Background colors
+pane.addBinding(Conf, "C1BG", { color: true, format:'hex', label: "BG 1" });
+pane.addBinding(Conf, "C1Line", { color: true, label: "Line 1" });
+
+// // 🎨 Line colors
+pane.addBinding(Conf, "C2BG", { color: true, label: "BG 2" });
+pane.addBinding(Conf, "C2Line", { color: true, label: "Line 2" });
+
+// 👁️ Luminance weights (super powerful control)
+const lumFolder = pane.addFolder({ title: "Luminance Weights" });
+
+// lumFolder.addBinding(Uniforms.LumWeights.value, "x", {
+//   min: 0,
+//   max: 1,
+//   step: 0.001,
+//   label: "Red",
+// });
+
+// lumFolder.addBinding(Uniforms.LumWeights.value, "y", {
+//   min: 0,
+//   max: 1,
+//   step: 0.001,
+//   label: "Green",
+// });
+
+// lumFolder.addBinding(Uniforms.LumWeights.value, "z", {
+//   min: 0,
+//   max: 1,
+//   step: 0.001,
+//   label: "Blue",
+// });
+
+// pane.addBinding(Uniforms.uFallOff, "value", {
+//   min: 0,
+//   // max: 100,
+//   max: 1,
+//   step: 0.0001,
+//   label: "FallOff",
+// });
+// pane.addBinding(Uniforms.uFrequency, "value", {
+//   min: 0,
+//   // max: 100,
+//   max: 20,
+//   step: 0.01,
+//   label: "Frequency",
+// });
+// pane.addBinding(Uniforms.uScale, "value", {
+//   min: 0,
+//   max: 50,
+//   step: 0.001,
+//   label: "Scale",
+// });
+// pane.addBinding(Uniforms.uProgress, "value", {
+//   min: 0,
+//   max: 1,
+//   step: 0.001,
+//   label: "Progress",
+// });
+
+// pane.dispose();
 
 const MouseTrail = SetupMouseTrail({
   width: 512,
@@ -134,7 +179,10 @@ const {
   GLB,
   renderer,
   pane,
+  Uniforms
 });
+
+ResizeControllers(innerWidth, innerHeight);
 
 // Fluid sim
 const FluidSim = SetupFluidSim(
@@ -160,15 +208,14 @@ const t1 = scenePass.getTextureNode("output");
 const t2 = texture(targetB.texture);
 const maskNode = FluidSim.maskNode;
 
-// renderPipeline.outputNode = t1;
+renderPipeline.outputNode = t1;
 renderPipeline.outputNode = Fn(() => {
   const mask = maskNode.sample(vec2(uv().x, uv().y.oneMinus())).r.oneMinus().r;
 
-
   // const nosiedVal = perlin2D(mul(uv().add(mask),2)).mul(.005);
-  const nosiedVal = perlin2D(mul(uv().add(mask),2)).mul(.005);
-  const t1Base = t1.sample(uv().add(vec2(nosiedVal)))
-  const luminance = dot(t1Base.rgb, vec3(0.299, 0.587, 0.114));
+  const nosiedVal = perlin2D(mul(uv().add(mask), 2)).mul(0.005);
+  const t1Base = t1.sample(uv().add(vec2(nosiedVal)));
+  const luminance = dot(t1Base.rgb, Uniforms.LumWeights);
   const Lumed = vec4(vec3(luminance), 1).mul(1.05);
 
   // return Lumed;
@@ -205,19 +252,9 @@ renderPipeline.outputNode = Fn(() => {
 //   // return maskNode;
 // })();
 
-let cameSet = false;
+new OrbitControls(CameraA, Canvas3D);
 
 function animate() {
-  const CurrentTime = Time.getElapsed();
-  const Delta = CurrentTime - PrevTime;
-  PrevTime = CurrentTime;
-
-  // if (!cameSet) {
-  //   CameraA.position.set(-5,5,5);
-  //   CameraA.lookAt(new THREE.Vector3(0, 0, 0));
-  //   cameSet = true;
-  // }
-
   MouseTrail.update();
   trailTexture.needsUpdate = true;
 
@@ -236,14 +273,19 @@ function animate() {
 
 animate();
 
-function Resize() {
-  const aspect = innerWidth / innerHeight;
-  // MouseTrail.canvas.width = 512;
-  // MouseTrail.canvas.height = 512 / aspect;
+let id = null;
 
-  FluidSim.resize(window.innerWidth, window.innerHeight);
-  ResizeControllers(innerWidth, innerHeight);
-  MouseTrail.resize(512, 512 / aspect);
+function Resize() {
+  clearTimeout(id);
+
+  id = setTimeout(() => {
+    const aspect = innerWidth / innerHeight;
+    renderer.setSize(innerWidth, innerHeight);
+
+    FluidSim.resize(window.innerWidth, window.innerHeight);
+    MouseTrail.resize(512, 512 / aspect);
+    ResizeControllers(innerWidth, innerHeight);
+  }, 500);
 }
 
 window.addEventListener("resize", Resize);

@@ -334,6 +334,48 @@ canvas.threejs {
   opacity: 0.5;
 }
 
+/* ── Sound variant selector ── */
+#sound-variants {
+  position: absolute;
+  bottom: clamp(80px, 8vh, 120px);
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 90vw;
+  opacity: 1;
+  transition: opacity 0.3s;
+}
+
+.variant-btn {
+  padding: 4px 10px;
+  background: none;
+  border: 0.5px solid #b8b09a;
+  border-radius: 12px;
+  color: #7a7568;
+  font-family: inherit;
+  font-size: clamp(7px, 0.75vw, 8px);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  white-space: nowrap;
+}
+
+.variant-btn:hover {
+  border-color: #3B6D11;
+  color: #3B6D11;
+}
+
+.variant-btn.active {
+  border-color: #3B6D11;
+  color: #3B6D11;
+  background: #EAF3DE;
+}
+
 /* ── Responsive ── */
 @media (max-width: 480px) {
   .left-side,
