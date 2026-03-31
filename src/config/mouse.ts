@@ -52,8 +52,8 @@ export const SetupMouseTrail = ({
 
     lastMouse = { ...mouse };
 
-    mouse.x = LERP(targetMouse.x, mouse.x, 0.1);
-    mouse.y = LERP(targetMouse.y, mouse.y, 0.1);
+    mouse.x = LERP(targetMouse.x, mouse.x, 0.15);
+    mouse.y = LERP(targetMouse.y, mouse.y, 0.15);
 
     const dx = mouse.x - lastMouse.x;
     const dy = mouse.y - lastMouse.y;

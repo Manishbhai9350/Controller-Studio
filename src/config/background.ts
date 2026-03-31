@@ -9,15 +9,16 @@ import {
   mix,
   positionLocal,
   positionWorld,
+  smoothstep,
   time,
   uv,
   varying,
+  vec2,
   vec3,
   vec4,
 } from "three/tsl";
 import * as THREE from "three/webgpu";
 import { fbm, perlin2D } from "../noises/fbm";
-import { smoothstep } from "three/src/math/MathUtils.js";
 
 const OffsetZ = 5;
 
@@ -25,7 +26,7 @@ export const createBackgroundPlane = (
   scene: THREE.Scene,
   camera: THREE.PerspectiveCamera,
   bgColor: string,
-  Uniforms,
+  offset,
 ) => {
   // visible camera size at distance
   const fov = THREE.MathUtils.degToRad(camera.fov);
@@ -38,7 +39,8 @@ export const createBackgroundPlane = (
 
   const finalColor = Fn(() => {
     // uniforms
-    const uFrequency = float(6);
+    const uFrequency = 8;
+    const uScale = 8;
     const uThickness = float(0.03);
     const uOctaves = float(4);
 
@@ -47,32 +49,30 @@ export const createBackgroundPlane = (
     const radius = length(centeredUV);
 
     // your fbm function 👇
-    const n = fbm(vec3(centeredUV.mul(uFrequency), uOctaves));
+    const n = perlin2D(vec2(centeredUV.mul(uFrequency)).add(time).mul(.3)).mul(uScale);
 
     // circular contour rings
     const rings = fract(radius.mul(uFrequency).add(n));
 
-    const lines = smoothstep(
-      uThickness,
-      uThickness.add(0.01),
-      abs(rings.sub(0.5)),
-    );
+    const lines = smoothstep(fract(n),.1,.5);
 
-    return mix(color(bgColor), color("#e80000"), lines);
+    return mix(color(bgColor), color(bgColor).add(offset), lines);
+    // return vec4(lines, 0, 0, 1);
   })();
 
   const material = new THREE.MeshBasicNodeMaterial();
-  material.colorNode = Fn(() => {
-    const z = perlin2D(uv().mul(Uniforms.uFrequency).add(time))
-      .mul(Uniforms.uScale)
-      .mul(0.2);
+  material.colorNode = finalColor;
+  // material.colorNode = Fn(() => {
+  //   const z = perlin2D(uv().mul(Uniforms.uFrequency).add(time))
+  //     .mul(Uniforms.uScale)
+  //     .mul(0.2);
 
-    const c = smoothstep(0.4, 0.6,z);
+  //   const c = smoothstep(0.4, 0.6,z);
 
-    // const color = mix();
+  //   // const color = mix();
 
-    return vec4(c, 0, 0, 1);
-  })();
+  //   return vec4(c, 0, 0, 1);
+  // })();
 
   const mesh = new THREE.Mesh(geometry, material);
 

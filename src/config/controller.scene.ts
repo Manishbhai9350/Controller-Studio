@@ -50,8 +50,7 @@ export const SetupControllers = ({
   height,
   GLB,
   renderer,
-  pane,
-  Uniforms,
+  pane
 }: {
   width: number;
   height: number;
@@ -76,8 +75,8 @@ export const SetupControllers = ({
     mz: 0,
     // C1BG: "#1A3A1F",
     C1BG: "#ceccc7",
-    C2BG: "#F0ECE4",
-    // C2BG: "#ffb41f",
+    // C2BG: "#F0ECE4",
+    C2BG: "#ffb41f",
   };
 
   // --- Mouse rotation state ---
@@ -104,9 +103,9 @@ export const SetupControllers = ({
     SceneA,
     CameraA,
     Tweeks.C1BG,
-    Uniforms,
+    -.1,
   );
-  createBackgroundPlane(SceneB, CameraB, Tweeks.C2BG, Uniforms);
+  createBackgroundPlane(SceneB, CameraB, Tweeks.C2BG, .1);
 
   let C1: THREE.Group<THREE.Object3DEventMap> | null,
     C2: THREE.Group<THREE.Object3DEventMap> | null;
@@ -118,7 +117,7 @@ export const SetupControllers = ({
   GLB.load("/models/controller-permian.glb", (glb) => {
     C1 = glb.scene;
 
-    // SceneA.add(C1);
+    SceneA.add(C1);
 
     // ✨ Fit to view
     fitModelToView(C1, CameraA, width, height);

@@ -32,7 +32,7 @@ export const randomGradient = Fn(([p]:[ConstNode<"vec2", Vector2>]) => {
 });
 
 
-export const perlin2D = Fn(([p]:[ConstNode<"vec2", Vector2>]) => {
+export const perlin2D = Fn(([p]:[ConstNode<"vec2", Vector2>]):number => {
   const i = floor(p);
   const f = fract(p);
 

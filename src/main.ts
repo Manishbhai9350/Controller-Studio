@@ -2,6 +2,8 @@ import "./style.css";
 
 import * as THREE from "three/webgpu";
 import {
+  abs,
+  float,
   Fn,
   mix,
   pass,
@@ -45,13 +47,13 @@ await renderer.init();
 const Uniforms = {
   // uFrequency: uniform(100),
   // uScale: uniform(4.5),
-  // uFrequency: uniform(25),
-  // uScale: uniform(10),
-  uFrequency: uniform(7),
-  uScale: uniform(50),
+  uFrequency: uniform(25),
+  uScale: uniform(25),
+  // uFrequency: uniform(1),
+  // uScale: uniform(8),
+  uProgress: uniform(0),
   uSpeed: uniform(1),
   uResolution: uniform(new THREE.Vector2(innerWidth, innerHeight)),
-
 };
 
 pane.addBinding(Uniforms.uFrequency, "value", {
@@ -67,12 +69,18 @@ pane.addBinding(Uniforms.uScale, "value", {
   step: 0.001,
   label: "Scale",
 });
+pane.addBinding(Uniforms.uProgress, "value", {
+  min: 0,
+  max: 1,
+  step: 0.001,
+  label: "Progress",
+});
 
 const MouseTrail = SetupMouseTrail({
   width: 512,
   height: (512 * innerHeight) / innerWidth,
 });
-main.appendChild(MouseTrail.canvas);
+// main.appendChild(MouseTrail.canvas);
 
 // CanvasTexture wraps the trail canvas
 const trailTexture = new THREE.CanvasTexture(MouseTrail.canvas);
@@ -100,7 +108,6 @@ const { SceneA, CameraA, SceneB, CameraB, targetB, renderSceneBToTarget } =
     GLB,
     renderer,
     pane,
-    Uniforms
   });
 
 // Fluid sim
@@ -115,7 +122,7 @@ const FluidSim = SetupFluidSim(
 let Time = new THREE.Timer();
 let PrevTime = Time.getElapsed();
 
-new OrbitControls(CameraA, Canvas3D);
+// new OrbitControls(CameraA, Canvas3D);
 // new OrbitControls(CameraB, Canvas3D);
 
 const renderPipeline = new THREE.RenderPipeline(renderer);
@@ -127,9 +134,12 @@ const t1 = scenePass.getTextureNode("output");
 const t2 = texture(targetB.texture);
 const maskNode = FluidSim.maskNode;
 
-renderPipeline.outputNode = t1;
+// renderPipeline.outputNode = t1;
 // renderPipeline.outputNode = maskNode.sample(vec2(uv().x,uv().y.oneMinus()));
-// renderPipeline.outputNode = mix(t1,t2,smoothstep(.35,.65,maskNode.sample(vec2(uv().x,uv().y.oneMinus())).r.oneMinus()));
+renderPipeline.outputNode = Fn(() => {
+  const mask = maskNode.sample(vec2(uv().x, uv().y.oneMinus())).r.oneMinus().r;
+  return mix(t1, t2, smoothstep(0.35, 0.65, abs(float(Uniforms.uProgress).sub(mask))));
+})();
 
 // renderPipeline.outputNode = Fn(() => {
 //   const screenUV = uv();

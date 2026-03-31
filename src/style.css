@@ -1,26 +1,314 @@
-* {
-  padding: 0;
+/* ── Reset & Base ── */
+*,
+*::before,
+*::after {
   margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 
-html,body {
-  width: 100%;
-  height: 100%;
-}
-
+html,
 body {
-  overflow: hidden;
-}
-
-main {
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-}
-
-canvas {
   width: 100%;
   height: 100%;
-  background: #ffffff;
+  overflow: hidden;
+  background: #f0ece4;
+}
+
+/* ── Three.js Canvas fills the full viewport ── */
+canvas.threejs {
+  position: fixed;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+/* ── Overlay: sits on top of canvas, pointer-events off so mouse/touch pass through to canvas ── */
+#overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  font-family: "Inter", system-ui, sans-serif;
+  overflow: hidden;
+}
+
+/* ── Corner brackets ── */
+.corner {
+  position: absolute;
+  width: clamp(12px, 2.5vw, 20px);
+  height: clamp(12px, 2.5vw, 20px);
+}
+.corner-tl {
+  top: clamp(8px, 2.5vw, 22px);
+  left: clamp(8px, 2.5vw, 22px);
+  border-top: 1.5px solid #2c2c2a;
+  border-left: 1.5px solid #2c2c2a;
+  border-radius: 1px 0 0 0;
+}
+.corner-tr {
+  top: clamp(8px, 2.5vw, 22px);
+  right: clamp(8px, 2.5vw, 22px);
+  border-top: 1.5px solid #2c2c2a;
+  border-right: 1.5px solid #2c2c2a;
+  border-radius: 0 1px 0 0;
+}
+.corner-bl {
+  bottom: clamp(8px, 2.5vw, 22px);
+  left: clamp(8px, 2.5vw, 22px);
+  border-bottom: 1.5px solid #2c2c2a;
+  border-left: 1.5px solid #2c2c2a;
+  border-radius: 0 0 0 1px;
+}
+.corner-br {
+  bottom: clamp(8px, 2.5vw, 22px);
+  right: clamp(8px, 2.5vw, 22px);
+  border-bottom: 1.5px solid #2c2c2a;
+  border-right: 1.5px solid #2c2c2a;
+  border-radius: 0 0 1px 0;
+}
+
+/* ── Top bar ── */
+.top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: clamp(12px, 2.5vw, 22px) clamp(16px, 4vw, 36px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.brand-name {
+  font-size: clamp(10px, 1.5vw, 14px);
+  font-weight: 600;
+  letter-spacing: 3px;
+  color: #1a1a18;
+  text-transform: uppercase;
+}
+.brand-sub {
+  font-size: clamp(8px, 1vw, 10px);
+  letter-spacing: 2px;
+  color: #7a7568;
+  text-transform: uppercase;
+}
+
+.top-center {
+  position: absolute;
+  top: clamp(14px, 2.5vw, 24px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #3b6d11;
+}
+.status-text {
+  font-size: clamp(7px, 1vw, 9px);
+  letter-spacing: 2px;
+  color: #7a7568;
+  text-transform: uppercase;
+}
+
+.top-right {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 1.2vw, 16px);
+}
+.tech-pill {
+  padding: 4px clamp(6px, 1vw, 10px);
+  border-radius: 20px;
+  border: 0.5px solid #3b6d11;
+  color: #3b6d11;
+  font-size: clamp(7px, 0.9vw, 9px);
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  background: #eaf3de;
+}
+.year-tag {
+  font-size: clamp(8px, 1vw, 10px);
+  color: #7a7568;
+  letter-spacing: 1px;
+}
+
+/* ── Left side label ── */
+.left-side {
+  position: absolute;
+  left: clamp(8px, 1.5vw, 22px);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+.side-line {
+  width: 0.5px;
+  height: clamp(20px, 4vh, 44px);
+  background: #c8c0b0;
+}
+.side-label {
+  font-size: clamp(6px, 0.8vw, 8px);
+  letter-spacing: 2px;
+  color: #9a9180;
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+/* ── Right side stats ── */
+.right-side {
+  position: absolute;
+  right: clamp(10px, 2vw, 24px);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+.stat-val {
+  font-size: clamp(10px, 1.5vw, 14px);
+  font-weight: 600;
+  color: #1a1a18;
+  letter-spacing: -0.5px;
+}
+.stat-key {
+  font-size: clamp(6px, 0.75vw, 8px);
+  letter-spacing: 1.5px;
+  color: #9a9180;
+  text-transform: uppercase;
+}
+.divider {
+  width: clamp(10px, 1.5vw, 18px);
+  height: 0.5px;
+  background: #c8c0b0;
+  margin: clamp(4px, 0.8vh, 8px) 0;
+}
+
+/* ── Bottom bar ── */
+.bottom-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: clamp(12px, 2.5vw, 24px) clamp(16px, 4vw, 36px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.bottom-left {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, 0.8vh, 8px);
+}
+.headline {
+  font-size: clamp(18px, 4vw, 34px);
+  font-weight: 700;
+  color: #1a1a18;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+}
+.headline span {
+  color: #3b6d11;
+}
+.tagline {
+  font-size: clamp(8px, 1vw, 11px);
+  color: #7a7568;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.bottom-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: clamp(6px, 1.2vh, 12px);
+}
+.variant-stack {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, 0.8vh, 8px);
+  align-items: flex-end;
+}
+.variant-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.variant-dot {
+  width: clamp(6px, 1vw, 9px);
+  height: clamp(6px, 1vw, 9px);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-white {
+  background: #f0ece4;
+  border: 1px solid #b8b09a;
+}
+.dot-green {
+  background: #3b6d11;
+}
+.variant-label {
+  font-size: clamp(8px, 1vw, 10px);
+  color: #5a5548;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.hint-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.hint-line {
+  width: clamp(16px, 2.5vw, 28px);
+  height: 0.5px;
+  background: #b8b09a;
+}
+.hint-text {
+  font-size: clamp(7px, 0.85vw, 9px);
+  color: #9a9180;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+/* ── Responsive: hide less important elements on narrow screens ── */
+@media (max-width: 480px) {
+  .left-side,
+  .right-side,
+  .top-center,
+  .year-tag {
+    display: none;
+  }
+  .top-right {
+    gap: 6px;
+  }
+}
+
+@media (max-width: 360px) {
+  .tech-pill {
+    display: none;
+  }
+  .brand-sub {
+    display: none;
+  }
 }
