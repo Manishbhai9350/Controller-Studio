@@ -10,7 +10,6 @@ import {
   sub,
   mul,
   min,
-  time,
 } from "three/tsl";
 import { MeshBasicNodeMaterial } from "three/webgpu";
 import { fbm } from "../noises/fbm";
@@ -19,10 +18,15 @@ import type { uniforms } from "../types";
 interface FluidSimReturn {
   maskNode: ReturnType<typeof texture>;
   update: (trailTexture: THREE.Texture) => void;
-  resize: (width: number, height: number) => void; // 👈 add
+  resize: (width: number, height: number) => void;
+  destroy: () => void; // ⭐ NEW
 }
 
-const createTargets = (w: number, h: number, opts) => {
+const createTargets = (
+  w: number,
+  h: number,
+  opts: THREE.RenderTargetOptions,
+) => {
   const a = new THREE.RenderTarget(w, h, opts);
   const b = new THREE.RenderTarget(w, h, opts);
   return { a, b };
@@ -36,7 +40,7 @@ export const SetupFluidSim = (
 ): FluidSimReturn => {
   let simWidth = width;
   let simHeight = height;
-  // ping pong render targets
+
   const opts: THREE.RenderTargetOptions = {
     minFilter: THREE.LinearFilter,
     magFilter: THREE.LinearFilter,
@@ -44,47 +48,35 @@ export const SetupFluidSim = (
     stencilBuffer: false,
   };
 
+  // ping-pong buffers
   let { a: targetA, b: targetB } = createTargets(simWidth, simHeight, opts);
 
-  // TSL bridge nodes
-  const prevNode = texture(null as unknown as THREE.Texture);
+  // TSL nodes
+  const prevNode = texture(targetA.texture);
   const inputNode = texture(null as unknown as THREE.Texture);
-  const maskNode = texture(null as unknown as THREE.Texture);
-  prevNode.value = targetA.texture;
-  maskNode.value = targetA.texture;
-  // fluid shader
+  const maskNode = texture(targetA.texture);
+
+  // 🧠 FLUID SHADER
   const fluidShader = Fn(() => {
     const uvCoord = uv();
 
-    // aspect corrected UV so mask is not stretched
-    // const screenAspect = simWidth / simHeight;
-    // const correctedUV = vec2(
-    //   uvCoord.x.mul(screenAspect).sub(float((screenAspect - 1.0) / 2.0)),
-    //   uvCoord.y,
-    // );
-
-    // displacement aspect fix
-    // const aspect = simHeight / simWidth;
-    // const aspectVec =
-    //   simWidth < simHeight ? vec2(1.0, 1.0 / aspect) : vec2(aspect, 1.0);
-
-    // FBM noise displacement
     const noiseX = fbm(
-      vec2(mul(vec2(uvCoord.x.mul(uvCoord.y), uvCoord.y), Uniforms.uFrequency)),
+      vec2(uvCoord.x.mul(uvCoord.y), uvCoord.y).mul(Uniforms.uFrequency),
     );
     const noiseY = fbm(
-      vec2(mul(vec2(uvCoord.x, uvCoord.y.mul(uvCoord.x)), Uniforms.uFrequency)),
+      vec2(uvCoord.x, uvCoord.y.mul(uvCoord.x)).mul(Uniforms.uFrequency),
     );
 
     const disp = vec2(noiseX, noiseY).mul(float(0.001).mul(Uniforms.uScale));
 
-    // darken blend helper
     const blendDarken = Fn(
-      ([base, blend]: [THREE.VarNode<"vec3">, THREE.VarNode<"vec3">]) =>
-        min(blend, base),
+      ([base, blend]: [
+        THREE.ConstNode<"vec3", THREE.Vector3>,
+        THREE.ConstNode<"vec3", THREE.Vector3>,
+      ]) => min(blend, base),
     );
 
-    // advection samples
+    // 9-tap advection
     const texel = prevNode.sample(uvCoord);
     const texel2 = prevNode.sample(vec2(add(uvCoord.x, disp.x), uvCoord.y));
     const texel3 = prevNode.sample(vec2(sub(uvCoord.x, disp.x), uvCoord.y));
@@ -103,31 +95,25 @@ export const SetupFluidSim = (
       vec2(sub(uvCoord.x, disp.x), sub(uvCoord.y, disp.y)),
     );
 
-    const floodcolor = texel.rgb.toVar();
-    floodcolor.assign(blendDarken(floodcolor, texel2.rgb));
-    floodcolor.assign(blendDarken(floodcolor, texel3.rgb));
-    floodcolor.assign(blendDarken(floodcolor, texel4.rgb));
-    floodcolor.assign(blendDarken(floodcolor, texel5.rgb));
-    floodcolor.assign(blendDarken(floodcolor, texel6.rgb));
-    floodcolor.assign(blendDarken(floodcolor, texel7.rgb));
-    floodcolor.assign(blendDarken(floodcolor, texel8.rgb));
-    floodcolor.assign(blendDarken(floodcolor, texel9.rgb));
+    const flood = texel.rgb.toVar();
+    flood.assign(blendDarken(flood, texel2.rgb));
+    flood.assign(blendDarken(flood, texel3.rgb));
+    flood.assign(blendDarken(flood, texel4.rgb));
+    flood.assign(blendDarken(flood, texel5.rgb));
+    flood.assign(blendDarken(flood, texel6.rgb));
+    flood.assign(blendDarken(flood, texel7.rgb));
+    flood.assign(blendDarken(flood, texel8.rgb));
+    flood.assign(blendDarken(flood, texel9.rgb));
 
     // mouse trail input
     const flippedUV = vec2(uvCoord.x, sub(float(1.0), uvCoord.y));
     const input = inputNode.sample(flippedUV);
-    const combined = blendDarken(floodcolor, input.rgb);
+    const combined = blendDarken(flood, input.rgb);
 
-    // If(combined.r.greaterThan(.4), () => {
-    //   combined.rgb.assign(vec3(1,1,1))
-    // })
-
-    // feedback
-    return min(vec3(1.0), add(combined, vec3(.04)));
-    // return vec4(correctedUV,0,1);
+    return min(vec3(1.0), add(combined, vec3(0.04)));
   });
 
-  // FBO full screen quad
+  // FBO scene
   const fboScene = new THREE.Scene();
   const fboCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
 
@@ -135,20 +121,15 @@ export const SetupFluidSim = (
   mat.colorNode = fluidShader();
 
   const geo = new THREE.PlaneGeometry(2, 2);
-
-  // flip UV for WebGPU readback
-  const uvAttr = geo.attributes.uv;
-  for (let i = 0; i < uvAttr.count; i++) {
-    uvAttr.setY(i, 1.0 - uvAttr.getY(i));
-  }
-
   const quad = new THREE.Mesh(geo, mat);
   fboScene.add(quad);
 
-  // update each frame
+  // 🔥 UPDATE LOOP
   const update = (trailTexture: THREE.Texture) => {
     prevNode.value = targetA.texture;
+
     inputNode.value = trailTexture;
+    inputNode.needsUpdate = true;
 
     renderer.setRenderTarget(targetB);
     renderer.render(fboScene, fboCamera);
@@ -156,28 +137,36 @@ export const SetupFluidSim = (
 
     maskNode.value = targetB.texture;
 
+    // ping-pong swap
     const temp = targetA;
     targetA = targetB;
     targetB = temp;
   };
 
+  // 📐 RESIZE SAFE
   const resize = (newWidth: number, newHeight: number) => {
     simWidth = newWidth;
     simHeight = newHeight;
 
-    // dispose old targets (VERY IMPORTANT)
     targetA.dispose();
     targetB.dispose();
 
-    // rebuild ping-pong buffers
     const targets = createTargets(simWidth, simHeight, opts);
     targetA = targets.a;
     targetB = targets.b;
 
-    // reconnect textures to TSL nodes
     prevNode.value = targetA.texture;
     maskNode.value = targetA.texture;
   };
 
-  return { maskNode, update, resize };
+  // 💀 DESTROY (VERY IMPORTANT)
+  const destroy = () => {
+    targetA.dispose();
+    targetB.dispose();
+    geo.dispose();
+    mat.dispose();
+    renderer.setRenderTarget(null);
+  };
+
+  return { maskNode, update, resize, destroy };
 };

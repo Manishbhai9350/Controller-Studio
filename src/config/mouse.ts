@@ -18,6 +18,18 @@ interface MouseTrailReturn {
   resize: (width: number, height: number) => void; // 👈 new
 }
 
+function mountCanvas(canvas: HTMLCanvasElement) {
+  if (canvas.parentElement) return; // prevent duplicate mount
+
+  canvas.style.position = "fixed";
+  canvas.style.left = "0";
+  canvas.style.top = "0";
+  canvas.style.pointerEvents = "none";
+  canvas.style.zIndex = "9999";
+
+  document.body.appendChild(canvas);
+}
+
 export const SetupMouseTrail = ({
   width,
   height,
@@ -29,6 +41,14 @@ export const SetupMouseTrail = ({
   canvas.width = canvasWidth;
   canvas.height = canvasHeight;
   const ctx = canvas.getContext("2d")!;
+
+  mountCanvas(canvas);
+
+  function initContextState() {
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 100;
+  }
 
   // Fill white to start
   ctx.fillStyle = "white";
@@ -69,6 +89,7 @@ export const SetupMouseTrail = ({
 
     let LerpFactor = 0.1;
     const targetOpacity = speed > 0.001 ? 1 : 0;
+
     // if (targetOpacity == 0) {
     //   LerpFactor = 0.05;
     // } else {
@@ -98,9 +119,16 @@ export const SetupMouseTrail = ({
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
 
-    // Important: reset canvas after resize
+    // 💥 re-init drawing state after resize
+    initContextState();
+
+    // clear
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+    // optional reset to avoid jump
+    mouse = null;
+    lastMouse = null;
   };
   return { canvas, update, resize };
 };
