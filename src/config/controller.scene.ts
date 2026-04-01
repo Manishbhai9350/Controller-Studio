@@ -12,6 +12,7 @@ import {
   smoothstep,
   step,
   time,
+  uniform,
   uv,
   vec3,
   vec4,
@@ -45,6 +46,44 @@ const setupLights = (scene: THREE.Scene) => {
   scene.add(ambient, keyLight, fillLight, rimLight);
 };
 
+
+type UniformNodeLike = { value: any };
+
+export function cloneUniforms<T extends Record<string, UniformNodeLike>>(source: T): T {
+  const cloned: any = {};
+
+  for (const key in source) {
+    const value = source[key].value;
+
+    // 🎨 Color
+    if (value instanceof THREE.Color) {
+      cloned[key] = uniform(value.clone());
+      continue;
+    }
+
+    // 📐 Vector2 / Vector3 / Vector4
+    if (
+      value instanceof THREE.Vector2 ||
+      value instanceof THREE.Vector3 ||
+      value instanceof THREE.Vector4
+    ) {
+      cloned[key] = uniform(value.clone());
+      continue;
+    }
+
+    // 🖼️ Texture (safe to share)
+    if (value instanceof THREE.Texture) {
+      cloned[key] = uniform(value);
+      continue;
+    }
+
+    // 🔢 numbers / booleans
+    cloned[key] = uniform(value);
+  }
+
+  return cloned as T;
+}
+
 export const SetupControllers = ({
   width,
   height,
@@ -73,11 +112,7 @@ export const SetupControllers = ({
     rz: 0,
     mx: 0,
     my: 0,
-    mz: 0,
-    // C1BG: "#1A3A1F",
-    C1BG: "#ceccc7",
-    // C2BG: "#F0ECE4",
-    C2BG: "#ffb41f",
+    mz: 0
   };
 
   // --- Mouse rotation state ---
@@ -99,18 +134,22 @@ export const SetupControllers = ({
 
   setupLights(SceneA);
   setupLights(SceneB);
+  
+  const U2 = cloneUniforms(Uniforms)
 
-  const { material: BG1Material, resize: Resize1 } = createBackgroundPlane(
+  const { resize: Resize1 } = createBackgroundPlane(
     SceneA,
     CameraA,
     Uniforms.C1BG,
-    Uniforms.C1Line
+    Uniforms.C1Line,
+    Uniforms
   );
   const { resize: Resize2 } = createBackgroundPlane(
     SceneB,
     CameraB,
-    Uniforms.C2BG,
-    Uniforms.C2BG
+    U2.C2BG,
+    U2.C2Line,
+    U2
   );
 
   let C1: THREE.Group<THREE.Object3DEventMap> | null,

@@ -6,6 +6,8 @@ import {
   dot,
   float,
   Fn,
+  fract,
+  length,
   mix,
   mul,
   pass,
@@ -13,6 +15,7 @@ import {
   step,
   sub,
   texture,
+  time,
   uniform,
   uv,
   vec2,
@@ -59,33 +62,62 @@ const Uniforms = {
   uSpeed: uniform(1),
   uFallOff: uniform(0.01),
   uResolution: uniform(new THREE.Vector2(innerWidth, innerHeight)),
+  uLineThicknes: uniform(.1),
+  uLineThreshold: uniform(.5),
+  uLineFrequency: uniform(5),
 
-  // Background colors
-  C1BG: uniform(new THREE.Color("#ceccc7")),
-  C2BG: uniform(new THREE.Color("#ffc654")),
+  // Background colors (normalized RGB)
+  C1BG: uniform(new THREE.Color(0.8078, 0.8, 0.7804)),
+  C2BG: uniform(new THREE.Color(1.0, 0.7765, 0.3294)),
 
-  // ✨ Line colors (slight variation)
-  C1Line: uniform(new THREE.Color("#b9b7b2")), // slightly darker/desaturated
-  C2Line: uniform(new THREE.Color("#e6a93d")), // slightly darker orange
+  // Line colors (normalized RGB)
+  C1Line: uniform(new THREE.Color(200/255, 179/255,126/255)),
+  C2Line: uniform(new THREE.Color(0.902, 0.6627, 0.2392)),
 
-  // ✨ Luminance weights (human eye RGB sensitivity)
   LumWeights: uniform(new THREE.Vector3(0.299, 0.587, 0.114)),
 };
 
-const Conf = {
-  C1BG: Uniforms.C1BG.value.getHexString(),
-  C2BG: Uniforms.C2BG.value.getHexString(),
-  C1Line: Uniforms.C1Line.value.getHexString(),
-  C2Line: Uniforms.C2Line.value.getHexString(),
+function setColorUniform(
+  uniformColor: THREE.UniformNode<"color", THREE.Color>,
+  { r, g, b }: { r: number; g: number; b: number },
+) {
+  uniformColor.value.setRGB(r / 255, g / 255, b / 255);
 }
+const getRGBObject = (color: THREE.Color) => {
+  const { r, g, b } = color;
+  return { r: r * 255, g: g * 255, b: b * 255 };
+};
 
-// 🎨 Background colors
-pane.addBinding(Conf, "C1BG", { color: true, format:'hex', label: "BG 1" });
-pane.addBinding(Conf, "C1Line", { color: true, label: "Line 1" });
+const Conf = {
+  C1BG: getRGBObject(Uniforms.C1BG.value),
+  C2BG: getRGBObject(Uniforms.C2BG.value),
+  C1Line: getRGBObject(Uniforms.C1Line.value),
+  C2Line: getRGBObject(Uniforms.C2Line.value),
+};
 
-// // 🎨 Line colors
-pane.addBinding(Conf, "C2BG", { color: true, label: "BG 2" });
-pane.addBinding(Conf, "C2Line", { color: true, label: "Line 2" });
+pane.addBinding(Uniforms.uLineThicknes,'value',{ min:0,max:1, label:"Line Thickness" })
+pane.addBinding(Uniforms.uLineThreshold,'value',{ min:0,max:1, label:"Line Threshold" })
+pane.addBinding(Uniforms.uLineFrequency,'value',{ min:0,max:10, label:"Line Frequency" })
+
+// 🎨 BG 1
+pane.addBinding(Conf, "C1BG", { label: "BG 1" }).on("change", (ev) => {
+  setColorUniform(Uniforms.C1BG, ev.value);
+});
+
+// 🎨 Line 1
+pane.addBinding(Conf, "C1Line", { label: "Line 1" }).on("change", (ev) => {
+  setColorUniform(Uniforms.C1Line, ev.value);
+});
+
+// 🎨 BG 2
+pane.addBinding(Conf, "C2BG", { label: "BG 2" }).on("change", (ev) => {
+  setColorUniform(Uniforms.C2BG, ev.value);
+});
+
+// 🎨 Line 2
+pane.addBinding(Conf, "C2Line", { label: "Line 2" }).on("change", (ev) => {
+  setColorUniform(Uniforms.C2Line, ev.value);
+});
 
 // 👁️ Luminance weights (super powerful control)
 const lumFolder = pane.addFolder({ title: "Luminance Weights" });
@@ -179,7 +211,7 @@ const {
   GLB,
   renderer,
   pane,
-  Uniforms
+  Uniforms,
 });
 
 ResizeControllers(innerWidth, innerHeight);
@@ -208,23 +240,24 @@ const t1 = scenePass.getTextureNode("output");
 const t2 = texture(targetB.texture);
 const maskNode = FluidSim.maskNode;
 
-renderPipeline.outputNode = t1;
-renderPipeline.outputNode = Fn(() => {
-  const mask = maskNode.sample(vec2(uv().x, uv().y.oneMinus())).r.oneMinus().r;
 
-  // const nosiedVal = perlin2D(mul(uv().add(mask),2)).mul(.005);
-  const nosiedVal = perlin2D(mul(uv().add(mask), 2)).mul(0.005);
-  const t1Base = t1.sample(uv().add(vec2(nosiedVal)));
-  const luminance = dot(t1Base.rgb, Uniforms.LumWeights);
-  const Lumed = vec4(vec3(luminance), 1).mul(1.05);
-
-  // return Lumed;
-  return mix(t1, Lumed, mask.oneMinus());
-})();
+// Dot Product Effect
 // renderPipeline.outputNode = Fn(() => {
 //   const mask = maskNode.sample(vec2(uv().x, uv().y.oneMinus())).r.oneMinus().r;
-//   return mix(t1, t2, smoothstep(0.35, 0.65, abs(float(Uniforms.uProgress).sub(mask))));
+
+//   // const nosiedVal = perlin2D(mul(uv().add(mask),2)).mul(.005);
+//   const nosiedVal = perlin2D(mul(uv().add(mask), 2)).mul(0.005);
+//   const t1Base = t1.sample(uv().add(vec2(nosiedVal)));
+//   const luminance = dot(t1Base.rgb, Uniforms.LumWeights);
+//   const Lumed = vec4(vec3(luminance), 1).mul(1.05);
+
+//   // return Lumed;
+//   return mix(t1, Lumed, mask.oneMinus());
 // })();
+renderPipeline.outputNode = Fn(() => {
+  const mask = maskNode.sample(vec2(uv().x, uv().y.oneMinus())).r.oneMinus().r;
+  return mix(t1, t2, smoothstep(0.35, 0.65, abs(float(Uniforms.uProgress).sub(mask))));
+})();
 
 // renderPipeline.outputNode = Fn(() => {
 //   const screenUV = uv();

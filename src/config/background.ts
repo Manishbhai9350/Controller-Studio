@@ -10,6 +10,7 @@ import {
   positionLocal,
   positionWorld,
   smoothstep,
+  step,
   time,
   uv,
   varying,
@@ -25,10 +26,11 @@ const OffsetZ = 5;
 export const createBackgroundPlane = (
   scene: THREE.Scene,
   camera: THREE.PerspectiveCamera,
-  bgColor: THREE.UniformNode<'vec3',THREE.Vector3>,
-  LineColor: THREE.UniformNode<'vec3',THREE.Vector3>,
+  bgColor: THREE.UniformNode<"vec3", THREE.Vector3>,
+  LineColor: THREE.UniformNode<"vec3", THREE.Vector3>,
+  Uniforms,
 ) => {
-  console.log(bgColor,LineColor)
+  console.log(bgColor, LineColor);
   // visible camera size at distance
   const fov = THREE.MathUtils.degToRad(camera.fov);
   let dist = camera.position.z + OffsetZ;
@@ -42,42 +44,31 @@ export const createBackgroundPlane = (
     // uniforms
     const uFrequency = 8;
     const uScale = 8;
-    const uThickness = float(0.03);
-    const uOctaves = float(4);
+    const threshold = Uniforms.uLineThreshold;
+    const thickness = Uniforms.uLineThicknes.div(2);
 
     // centered UV (-1 → 1)
     const centeredUV = uv().mul(2).sub(1);
-    const radius = length(centeredUV);
 
     // your fbm function 👇
-    const n = perlin2D(vec2(centeredUV.mul(uFrequency)).add(time).mul(0.3)).mul(
-      uScale,
-    );
+    const n = perlin2D(
+      vec2(centeredUV.mul(Uniforms.uLineFrequency)).add(time).mul(0.3),
+    ).mul(uScale);
 
     // circular contour rings
-    const rings = fract(radius.mul(uFrequency).add(n));
+    const rings = fract(n);
 
-    const lines = smoothstep(fract(n), 0.1, 0.5);
+    const lower = threshold.sub(thickness);
+    const upper = threshold.add(thickness);
+    const lines = step(lower, rings) // rings >= lower
+      .mul(step(rings, upper)); // rings <= upper
 
-    return mix(bgColor, LineColor, lines);
-    // return vec4(lines, 0, 0, 1);
+    return mix(Uniforms.C1BG, Uniforms.C1Line, abs(lines));
   })();
 
   const material = new THREE.MeshBasicNodeMaterial();
-  material.colorNode = finalColor;
-  // material.colorNode = Fn(() => {
-  //   const z = perlin2D(uv().mul(Uniforms.uFrequency).add(time))
-  //     .mul(Uniforms.uScale)
-  //     .mul(0.2);
-
-  //   const c = smoothstep(0.4, 0.6,z);
-
-  //   // const color = mix();
-
-  //   return vec4(c, 0, 0, 1);
-  // })();
-
   const mesh = new THREE.Mesh(geometry, material);
+  material.colorNode = finalColor;
 
   mesh.position.z = -OffsetZ; // behind model
 
