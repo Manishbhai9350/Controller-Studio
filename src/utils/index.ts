@@ -11,9 +11,6 @@ export const fitModelToView = (
 ) => {
   if (!model || !camera) return;
 
-  // 🔴 IMPORTANT: store original scale
-  const prevScale = model.scale.clone();
-
   // 🔴 Reset scale so bounding box is always correct
   model.scale.set(1, 1, 1);
 
@@ -52,7 +49,7 @@ export function setupStudioLights(scene: THREE.Scene) {
   key.position.set(-3, 4, 3);
 
   // fill light (right side soft)
-  const fill = new THREE.DirectionalLight(0xffffff, 1.2);
+  const fill = new THREE.DirectionalLight(0xffffff, 1.2 );
   fill.position.set(3, 1, 2);
 
   // rim light (back glow)

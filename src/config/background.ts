@@ -63,7 +63,7 @@ export const createBackgroundPlane = (
     const lines = step(lower, rings) // rings >= lower
       .mul(step(rings, upper)); // rings <= upper
 
-    return mix(Uniforms.C1BG, Uniforms.C1Line, abs(lines));
+    return mix(bgColor, LineColor, abs(lines));
   })();
 
   const material = new THREE.MeshBasicNodeMaterial();

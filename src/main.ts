@@ -1,6 +1,17 @@
 import "./style.css";
 import * as THREE from "three/webgpu";
-import { Fn, pass, texture, uv, vec2, uniform, vec4, vec3 } from "three/tsl";
+import {
+  Fn,
+  pass,
+  texture,
+  uv,
+  vec2,
+  uniform,
+  vec4,
+  vec3,
+  step,
+  mix,
+} from "three/tsl";
 
 import { SetupMouseTrail } from "./config/mouse";
 import { SetupFluidSim } from "./config/fluidsim";
@@ -16,6 +27,7 @@ import { Pane } from "tweakpane";
 import { initSound } from "./config/audio.engine";
 import type { AppUniforms } from "./types";
 import { DotProductNode, DotProductNodeCA } from "./config/output.node";
+import Stats from "three/examples/jsm/libs/stats.module.js";
 
 // --------------------------------------------------
 // BASIC SETUP
@@ -31,6 +43,7 @@ initSound();
 const renderer = new THREE.WebGPURenderer({
   antialias: true,
   canvas: Canvas3D,
+  powerPreference: "high-performance",
 });
 renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(Math.min(2, devicePixelRatio));
@@ -40,6 +53,20 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 await renderer.init();
+
+const statusText = document.getElementById("status-text");
+const techModePill = document.getElementById("tech-mode-pill");
+const techMode = renderer instanceof THREE.WebGPURenderer ? "WebGPU" : "WebGL";
+
+if (statusText) {
+  statusText.textContent = `${techMode} · Live`;
+}
+if (techModePill) {
+  techModePill.textContent = techMode;
+}
+
+const stats = new Stats();
+document.body.appendChild(stats.dom);
 
 // --------------------------------------------------
 // UNIFORMS
@@ -63,17 +90,18 @@ const Uniforms: AppUniforms = {
 
   // 🎨 Background colors (normalized)
   C1BG: uniform(new THREE.Color(0.8078, 0.8, 0.7804)),
-  C2BG: uniform(new THREE.Color(1.0, 0.7765, 0.3294)),
+  C2BG: uniform(new THREE.Color(0.18, 0.18, 0.18)),
 
+  // {r: 0.33, g: 0.33, b: 0.33}
   // 🎨 Line colors (normalized)
   C1Line: uniform(new THREE.Color(200 / 255, 179 / 255, 126 / 255)),
-  C2Line: uniform(new THREE.Color(0.902, 0.6627, 0.2392)),
+  C2Line: uniform(new THREE.Color(0.95, 0.95, 0.7)),
 
   // Luminance weights (grayscale mixing)
   LumWeights: uniform(new THREE.Vector3(0.299, 0.587, 0.114)),
 
   uRippleStrength: uniform(0.05),
-  uMouseLERP: .25,
+  uMouseLERP: 0.25,
 };
 
 const pane = new Pane();
@@ -94,8 +122,6 @@ const TweakColors = {
   C1Line: toTweakColor(Uniforms.C1Line.value),
   C2Line: toTweakColor(Uniforms.C2Line.value),
 };
-
-console.log(TweakColors);
 
 const ColorFolder = pane.addFolder({ title: "Colors", expanded: false });
 
@@ -152,7 +178,7 @@ MouseFolder.addBinding(Uniforms, "uMouseLERP", {
 // RESOLUTION HELPERS
 // --------------------------------------------------
 
-function getFluidSimResolution(renderer: THREE.WebGPURenderer) {
+function getFluidSimResolution() {
   const MIN_SCREEN = 512;
   const MAX_SCREEN = 2000;
   const MIN_RT = 768;
@@ -166,17 +192,8 @@ function getFluidSimResolution(renderer: THREE.WebGPURenderer) {
     1,
   );
 
-  let width = Math.round(MIN_RT + (MAX_RT - MIN_RT) * t);
-  let height = Math.round(width * aspect);
-
-  // ⭐⭐⭐ CRITICAL FIX ⭐⭐⭐
-  if (!renderer) {
-    return { width, height };
-  }
-  const size = renderer.getDrawingBufferSize(new THREE.Vector2());
-
-  width = Math.max(width, size.x);
-  height = Math.max(height, size.y);
+  const width = Math.round(MIN_RT + (MAX_RT - MIN_RT) * t);
+  const height = Math.round(width * aspect);
 
   return { width, height };
 }
@@ -191,7 +208,7 @@ function getMouseTrailResolution() {
 // MOUSE TRAIL + TEXTURE
 // --------------------------------------------------
 
-const MouseTrail = SetupMouseTrail({...getMouseTrailResolution(),Uniforms});
+const MouseTrail = SetupMouseTrail({ ...getMouseTrailResolution(), Uniforms });
 
 const trailTexture = new THREE.CanvasTexture(MouseTrail.canvas);
 trailTexture.minFilter = THREE.LinearFilter;
@@ -237,7 +254,7 @@ ResizeControllers(innerWidth, innerHeight);
 // FLUID SIM
 // --------------------------------------------------
 
-let FluidSize = getFluidSimResolution(renderer);
+let FluidSize = getFluidSimResolution();
 let FluidSim = SetupFluidSim(
   renderer,
   FluidSize.width,
@@ -269,13 +286,13 @@ function buildPipeline() {
   //   return vec4(vec2(maskNode.sample(vec2(uv().x, uv().y)).gb),0,1);
   // })();
   // renderPipeline.outputNode = DotProductNode(output,maskNode,Uniforms,scene2)
-  renderPipeline.outputNode = DotProductNodeCA(
-    output,
-    maskNode,
-    Uniforms,
-    scene2,
-  );
-  // renderPipeline.outputNode = texture(targetB.texture);
+  // renderPipeline.outputNode = DotProductNodeCA(
+  //   output,
+  //   maskNode,
+  //   Uniforms,
+  //   scene2,
+  // );
+  renderPipeline.outputNode = mix(output, scene2, step(uv().x, 0.5));
 }
 
 buildPipeline();
@@ -285,6 +302,7 @@ buildPipeline();
 // --------------------------------------------------
 
 function animate() {
+  stats.begin();
   requestAnimationFrame(animate);
 
   MouseTrail.update();
@@ -293,6 +311,7 @@ function animate() {
   FluidSim.update(trailTexture);
   renderSceneBToTarget();
   renderPipeline.render();
+  stats.end();
 }
 
 animate();

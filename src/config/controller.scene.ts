@@ -2,22 +2,8 @@
 import type { GLTFLoader } from "three/examples/jsm/Addons.js";
 import { Pane } from "tweakpane";
 import * as THREE from "three/webgpu";
-import { fitModelToView } from "../utils";
+import { fitModelToView, setupStudioLights } from "../utils";
 import { createBackgroundPlane } from "./background";
-import {
-  Fn,
-  mix,
-  positionLocal,
-  positionWorld,
-  smoothstep,
-  step,
-  time,
-  uniform,
-  uv,
-  vec3,
-  vec4,
-} from "three/tsl";
-import { perlin2D } from "../noises/fbm";
 import type { AppUniforms } from "../types";
 
 const SceneA = new THREE.Scene();
@@ -33,7 +19,7 @@ const setupLights = (scene: THREE.Scene) => {
   const ambient = new THREE.AmbientLight(0xffffff, 0.5);
 
   // Key light — main light from top left
-  const keyLight = new THREE.DirectionalLight(0xffffff, 2);
+  const keyLight = new THREE.DirectionalLight(0xffffff, 3.7);
   keyLight.position.set(-3, 4, 3);
   keyLight.castShadow = true;
   keyLight.shadow.mapSize.width = 2048;
@@ -41,7 +27,7 @@ const setupLights = (scene: THREE.Scene) => {
   keyLight.shadow.radius = 4; // softness
 
   // Fill light — softer from right
-  const fillLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  const fillLight = new THREE.DirectionalLight(0xffffff, 1.5);
   fillLight.position.set(3, 2, 2);
   fillLight.castShadow = true;
   fillLight.shadow.mapSize.width = 2048;
@@ -49,7 +35,7 @@ const setupLights = (scene: THREE.Scene) => {
   fillLight.shadow.radius = 4; // softness
 
   // Rim light — from behind to give edge definition
-  const rimLight = new THREE.DirectionalLight(0xffffff, 1.5);
+  const rimLight = new THREE.DirectionalLight(0xffffff, 2.7);
   rimLight.position.set(0, -2, -4);
   fillLight;
   rimLight.castShadow = true;
@@ -96,7 +82,6 @@ export const SetupControllers = ({
   };
 
   // --- Mouse rotation state ---
-  let mouse = { x: 0, y: 0 };
   let targetMouse = { x: 0, y: 0 };
   let smoothMouse = { x: 0, y: 0 };
 
@@ -104,6 +89,7 @@ export const SetupControllers = ({
   const mouseStrength = 0.4;
 
   const dpr = renderer.getPixelRatio();
+  console.log(dpr)
 
   const opts = {
     minFilter: THREE.LinearFilter,
@@ -113,8 +99,12 @@ export const SetupControllers = ({
   };
   const targetB = new THREE.RenderTarget(width * dpr, height * dpr, opts);
 
-  setupLights(SceneA);
-  setupLights(SceneB);
+  // targetB.texture.minFilter = THREE.LinearFilter;
+  // targetB.texture.magFilter = THREE.LinearFilter;
+  // targetB.texture.generateMipmaps = false;
+
+  setupStudioLights(SceneA);
+  setupStudioLights(SceneB);
 
   const { resize: Resize1 } = createBackgroundPlane(
     SceneA,
@@ -185,10 +175,20 @@ export const SetupControllers = ({
     }
   };
 
+  let timeOutId: number | undefined;
   window.addEventListener("mousemove", (e) => {
+    clearTimeout(timeOutId)
     targetMouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     targetMouse.y = (e.clientY / window.innerHeight) * 2 - 1;
+    timeOutId = setTimeout(() => {
+      targetMouse.x = 0
+      targetMouse.y = 0
+    }, 750);
   });
+
+  window.addEventListener("mouseleave", () => {
+    console.log(targetMouse)
+  })
 
   const renderSceneBToTarget = () => {
     updateMouseRotation();
@@ -198,7 +198,9 @@ export const SetupControllers = ({
   };
 
   const resize = (w: number, h: number) => {
-    const aspect = w / h;
+    const correctW = w * dpr;
+    const correctH = h * dpr;
+    const aspect = correctW /correctH;
 
     // --- Update Cameras ---
     [CameraA, CameraB].forEach((Camera, i) => {
@@ -207,12 +209,12 @@ export const SetupControllers = ({
 
       [Resize1, Resize2][i](Camera.position.z);
       if (C1 && C2) {
-        fitModelToView([C1, C2][i], Camera, w, h);
+        fitModelToView([C1, C2][i], Camera, w,h);
       }
     });
 
     // --- Update Render Targets ---
-    targetB.setSize(w * dpr, h * dpr); // 👈
+    targetB.setSize(correctW,correctH ); // 👈
   };
 
   return {
