@@ -15,7 +15,7 @@ import {
 import { Pane } from "tweakpane";
 import { initSound } from "./config/audio.engine";
 import type { AppUniforms } from "./types";
-import { DotProductNode } from "./config/output.node";
+import { DotProductNode, DotProductNodeCA } from "./config/output.node";
 
 // --------------------------------------------------
 // BASIC SETUP
@@ -33,7 +33,12 @@ const renderer = new THREE.WebGPURenderer({
   canvas: Canvas3D,
 });
 renderer.setSize(innerWidth, innerHeight);
-renderer.setPixelRatio(devicePixelRatio);
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap; // instead of default PCFShadowMap
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 await renderer.init();
 
 // --------------------------------------------------
@@ -68,16 +73,79 @@ const Uniforms: AppUniforms = {
   LumWeights: uniform(new THREE.Vector3(0.299, 0.587, 0.114)),
 
   uRippleStrength: uniform(0.05),
+  uMouseLERP: .25,
 };
 
 const pane = new Pane();
 
-const MouseFolder = pane.addFolder({ title:'Mouse Setting', expanded:false })
+const toTweakColor = (color: THREE.Color) => {
+  const target = new THREE.Color();
+  color.getRGB(target);
+  return {
+    r: target.r * 255,
+    g: target.g * 255,
+    b: target.b * 255,
+  };
+};
+
+const TweakColors = {
+  C1BG: toTweakColor(Uniforms.C1BG.value),
+  C2BG: toTweakColor(Uniforms.C2BG.value),
+  C1Line: toTweakColor(Uniforms.C1Line.value),
+  C2Line: toTweakColor(Uniforms.C2Line.value),
+};
+
+console.log(TweakColors);
+
+const ColorFolder = pane.addFolder({ title: "Colors", expanded: false });
+
+ColorFolder.addBinding(TweakColors, "C1BG", {
+  label: "Scene 1 BG",
+  color: { type: "float" },
+}).on("change", ({ value }) => {
+  Uniforms.C1BG.value.r = value.r / 1;
+  Uniforms.C1BG.value.g = value.g / 1;
+  Uniforms.C1BG.value.b = value.b / 1;
+});
+
+ColorFolder.addBinding(TweakColors, "C1Line", {
+  label: "Scene 1 Line",
+  color: { type: "float" },
+}).on("change", ({ value }) => {
+  Uniforms.C1Line.value.r = value.r / 1;
+  Uniforms.C1Line.value.g = value.g / 1;
+  Uniforms.C1Line.value.b = value.b / 1;
+});
+
+ColorFolder.addBinding(TweakColors, "C2BG", {
+  label: "Scene 2 BG",
+  color: { type: "float" },
+}).on("change", ({ value }) => {
+  Uniforms.C2BG.value.r = value.r / 1;
+  Uniforms.C2BG.value.g = value.g / 1;
+  Uniforms.C2BG.value.b = value.b / 1;
+});
+
+ColorFolder.addBinding(TweakColors, "C2Line", {
+  label: "Scene 2 Line",
+  color: { type: "float" },
+}).on("change", ({ value }) => {
+  Uniforms.C2Line.value.r = value.r / 1;
+  Uniforms.C2Line.value.g = value.g / 1;
+  Uniforms.C2Line.value.b = value.b / 1;
+});
+
+const MouseFolder = pane.addFolder({ title: "Mouse Setting", expanded: false });
 
 MouseFolder.addBinding(Uniforms.uRippleStrength, "value", {
   label: "Distortion",
   min: 0,
   max: 0.5,
+});
+MouseFolder.addBinding(Uniforms, "uMouseLERP", {
+  label: "Mouse LERP",
+  min: 0,
+  max: 1,
 });
 
 // --------------------------------------------------
@@ -123,7 +191,7 @@ function getMouseTrailResolution() {
 // MOUSE TRAIL + TEXTURE
 // --------------------------------------------------
 
-const MouseTrail = SetupMouseTrail(getMouseTrailResolution());
+const MouseTrail = SetupMouseTrail({...getMouseTrailResolution(),Uniforms});
 
 const trailTexture = new THREE.CanvasTexture(MouseTrail.canvas);
 trailTexture.minFilter = THREE.LinearFilter;
@@ -149,6 +217,8 @@ GLB.setDRACOLoader(Draco);
 const {
   SceneA,
   CameraA,
+  CameraB,
+  SceneB,
   targetB,
   renderSceneBToTarget,
   resize: ResizeControllers,
@@ -175,6 +245,8 @@ let FluidSim = SetupFluidSim(
   Uniforms,
 );
 
+new OrbitControls(CameraB, Canvas3D);
+
 // --------------------------------------------------
 // RENDER PIPELINE (VERY IMPORTANT)
 // --------------------------------------------------
@@ -189,15 +261,21 @@ function buildPipeline() {
   scenePass = pass(SceneA, CameraA);
   maskNode = FluidSim.maskNode;
 
-  const output = scenePass.getTextureNode('output');
-  const scene2 = texture(targetB.texture)
+  const output = scenePass.getTextureNode("output");
+  const scene2 = texture(targetB.texture);
 
   // renderPipeline.outputNode = output;
-  renderPipeline.outputNode = Fn(() => {
-    return vec4(vec2(maskNode.sample(vec2(uv().x, uv().y)).gb),0,1);
-  })();
-  renderPipeline.outputNode = DotProductNode(output,maskNode,Uniforms,scene2)
-
+  // renderPipeline.outputNode = Fn(() => {
+  //   return vec4(vec2(maskNode.sample(vec2(uv().x, uv().y)).gb),0,1);
+  // })();
+  // renderPipeline.outputNode = DotProductNode(output,maskNode,Uniforms,scene2)
+  renderPipeline.outputNode = DotProductNodeCA(
+    output,
+    maskNode,
+    Uniforms,
+    scene2,
+  );
+  // renderPipeline.outputNode = texture(targetB.texture);
 }
 
 buildPipeline();

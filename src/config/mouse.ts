@@ -1,15 +1,12 @@
 // config/mouseTrail.ts
 
+import type { AppUniforms } from "../types";
 import { LERP } from "../utils";
 
 interface MouseTrailOptions {
   width: number;
   height: number;
-}
-
-interface MouseTrailReturn {
-  canvas: HTMLCanvasElement;
-  update: () => void;
+  Uniforms: AppUniforms;
 }
 
 interface MouseTrailReturn {
@@ -33,6 +30,7 @@ function mountCanvas(canvas: HTMLCanvasElement) {
 export const SetupMouseTrail = ({
   width,
   height,
+  Uniforms,
 }: MouseTrailOptions): MouseTrailReturn => {
   let canvasWidth = width;
   let canvasHeight = height;
@@ -80,8 +78,8 @@ export const SetupMouseTrail = ({
 
     lastMouse = { ...mouse };
 
-    mouse.x = LERP(targetMouse.x, mouse.x, 0.15);
-    mouse.y = LERP(targetMouse.y, mouse.y, 0.15);
+    mouse.x = LERP(targetMouse.x, mouse.x, Uniforms.uMouseLERP);
+    mouse.y = LERP(targetMouse.y, mouse.y, Uniforms.uMouseLERP);
 
     const dx = mouse.x - lastMouse.x;
     const dy = mouse.y - lastMouse.y;

@@ -35,52 +35,33 @@ const setupLights = (scene: THREE.Scene) => {
   // Key light — main light from top left
   const keyLight = new THREE.DirectionalLight(0xffffff, 2);
   keyLight.position.set(-3, 4, 3);
+  keyLight.castShadow = true;
+  keyLight.shadow.mapSize.width = 2048;
+  keyLight.shadow.mapSize.height = 2048;
+  keyLight.shadow.radius = 4; // softness
 
   // Fill light — softer from right
   const fillLight = new THREE.DirectionalLight(0xffffff, 0.8);
   fillLight.position.set(3, 2, 2);
+  fillLight.castShadow = true;
+  fillLight.shadow.mapSize.width = 2048;
+  fillLight.shadow.mapSize.height = 2048;
+  fillLight.shadow.radius = 4; // softness
 
   // Rim light — from behind to give edge definition
   const rimLight = new THREE.DirectionalLight(0xffffff, 1.5);
   rimLight.position.set(0, -2, -4);
+  fillLight;
+  rimLight.castShadow = true;
+  fillLight;
+  rimLight.shadow.mapSize.width = 2048;
+  fillLight;
+  rimLight.shadow.mapSize.height = 2048;
+  fillLight;
+  rimLight.shadow.radius = 4; // softness
 
   scene.add(ambient, keyLight, fillLight, rimLight);
 };
-
-export function cloneUniforms<AppUniforms>(source: AppUniforms): AppUniforms {
-  const cloned: any = {};
-
-  for (const key in source) {
-    const value = source[key].value;
-
-    // 🎨 Color
-    if (value instanceof THREE.Color) {
-      cloned[key] = uniform(value.clone());
-      continue;
-    }
-
-    // 📐 Vector2 / Vector3 / Vector4
-    if (
-      value instanceof THREE.Vector2 ||
-      value instanceof THREE.Vector3 ||
-      value instanceof THREE.Vector4
-    ) {
-      cloned[key] = uniform(value.clone());
-      continue;
-    }
-
-    // 🖼️ Texture (safe to share)
-    if (value instanceof THREE.Texture) {
-      cloned[key] = uniform(value);
-      continue;
-    }
-
-    // 🔢 numbers / booleans
-    cloned[key] = uniform(value);
-  }
-
-  return cloned as AppUniforms;
-}
 
 export const SetupControllers = ({
   width,
@@ -122,19 +103,18 @@ export const SetupControllers = ({
   // strength of effect (very important for premium feel)
   const mouseStrength = 0.4;
 
+  const dpr = renderer.getPixelRatio();
+
   const opts = {
     minFilter: THREE.LinearFilter,
     magFilter: THREE.LinearFilter,
     // depthBuffer: false,
     // stencilBuffer: false,
   };
-  const targetA = new THREE.RenderTarget(width, height, opts);
-  const targetB = new THREE.RenderTarget(width, height, opts);
+  const targetB = new THREE.RenderTarget(width * dpr, height * dpr, opts);
 
   setupLights(SceneA);
   setupLights(SceneB);
-
-  const U2 = cloneUniforms(Uniforms);
 
   const { resize: Resize1 } = createBackgroundPlane(
     SceneA,
@@ -146,9 +126,9 @@ export const SetupControllers = ({
   const { resize: Resize2 } = createBackgroundPlane(
     SceneB,
     CameraB,
-    U2.C2BG,
-    U2.C2Line,
-    U2,
+    Uniforms.C2BG,
+    Uniforms.C2Line,
+    Uniforms,
   );
 
   let C1: THREE.Group<THREE.Object3DEventMap> | null,
@@ -232,8 +212,7 @@ export const SetupControllers = ({
     });
 
     // --- Update Render Targets ---
-    targetA.setSize(w, h);
-    targetB.setSize(w, h);
+    targetB.setSize(w * dpr, h * dpr); // 👈
   };
 
   return {
