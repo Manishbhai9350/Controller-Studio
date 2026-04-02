@@ -56,4 +56,5 @@ export interface AppUniforms {
   C2Line: UniformNode<"color", THREE.Color>;
 
   LumWeights: UniformNode<"vec3", THREE.Vector3>;
+  uRippleStrength: UniformNode<"float", number>;
 }

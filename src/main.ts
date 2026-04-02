@@ -1,6 +1,6 @@
 import "./style.css";
 import * as THREE from "three/webgpu";
-import { Fn, pass, texture, uv, vec2, uniform } from "three/tsl";
+import { Fn, pass, texture, uv, vec2, uniform, vec4, vec3 } from "three/tsl";
 
 import { SetupMouseTrail } from "./config/mouse";
 import { SetupFluidSim } from "./config/fluidsim";
@@ -66,7 +66,19 @@ const Uniforms: AppUniforms = {
 
   // Luminance weights (grayscale mixing)
   LumWeights: uniform(new THREE.Vector3(0.299, 0.587, 0.114)),
+
+  uRippleStrength: uniform(0.05),
 };
+
+const pane = new Pane();
+
+const MouseFolder = pane.addFolder({ title:'Mouse Setting', expanded:false })
+
+MouseFolder.addBinding(Uniforms.uRippleStrength, "value", {
+  label: "Distortion",
+  min: 0,
+  max: 0.5,
+});
 
 // --------------------------------------------------
 // RESOLUTION HELPERS
@@ -145,7 +157,7 @@ const {
   height: innerHeight,
   GLB,
   renderer,
-  pane: new Pane(),
+  pane,
   Uniforms,
 });
 
@@ -177,13 +189,14 @@ function buildPipeline() {
   scenePass = pass(SceneA, CameraA);
   maskNode = FluidSim.maskNode;
 
-  const output = scenePass.getTextureNode('output')
+  const output = scenePass.getTextureNode('output');
+  const scene2 = texture(targetB.texture)
 
   // renderPipeline.outputNode = output;
-  // renderPipeline.outputNode = Fn(() => {
-  //   return maskNode.sample(vec2(uv().x, uv().y.oneMinus()));
-  // })();
-  renderPipeline.outputNode = DotProductNode(output,maskNode,Uniforms)
+  renderPipeline.outputNode = Fn(() => {
+    return vec4(vec2(maskNode.sample(vec2(uv().x, uv().y)).gb),0,1);
+  })();
+  renderPipeline.outputNode = DotProductNode(output,maskNode,Uniforms,scene2)
 
 }
 

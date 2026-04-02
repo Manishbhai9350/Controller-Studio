@@ -11,6 +11,8 @@ import {
   mul,
   min,
   vec4,
+  abs,
+  max,
 } from "three/tsl";
 import { MeshBasicNodeMaterial } from "three/webgpu";
 import { fbm } from "../noises/fbm";
@@ -104,11 +106,55 @@ export const SetupFluidSim = (
     flood.assign(blendDarken(flood, texel8.rgb));
     flood.assign(blendDarken(flood, texel9.rgb));
 
+    // Edge Distortion F
+    const texR = prevNode.sample(vec2(add(uvCoord.x, disp.x), uvCoord.y));
+    const texL = prevNode.sample(vec2(sub(uvCoord.x, disp.x), uvCoord.y));
+    const texU = prevNode.sample(vec2(uvCoord.x, add(uvCoord.y, disp.y)));
+    const texD = prevNode.sample(vec2(uvCoord.x, sub(uvCoord.y, disp.y)));
+    const texRU = prevNode.sample(add(uvCoord, disp));
+    const texRD = prevNode.sample(add(uvCoord, vec2(disp.x, disp.y.negate())));
+    const texLU = prevNode.sample(sub(uvCoord, vec2(disp.x, disp.y.negate())));
+    const texLD = prevNode.sample(sub(uvCoord, vec2(disp.x, disp.y)));
+
+    const DLDRU = texLD.r.sub(texRU.r);
+    const DRDLU = texRD.r.sub(texLU.r);
+    const gradX = sub(texR.r, texL.r);
+    const gradY = sub(texU.r, texD.r);
+
+    const edgeStrength = min(
+      float(1.0),
+      add(abs(gradX), abs(gradY)).mul(8.0), // boost edges
+    );
+
+    const edgeXYStrength = max(
+      max(abs(DLDRU), abs(DRDLU)).sub(add(abs(gradX), abs(gradY))),
+      float(0),
+    );
+
+    const edgeHVStrength = float(1).sub(edgeXYStrength);
+
+    const distortionX = add(gradX.mul(0.6), noiseX.mul(0.4))
+      .mul(edgeHVStrength)
+      .mul(edgeStrength);
+    const distortionY = add(gradY.mul(0.6), noiseY.mul(0.4))
+      .mul(edgeHVStrength)
+      .mul(edgeStrength);
+
+    distortionX.addAssign(noiseX.mul(edgeXYStrength).mul(edgeStrength));
+    distortionY.addAssign(noiseY.mul(edgeXYStrength).mul(edgeStrength));
+
     // mouse trail input
     const input = inputNode.sample(uvCoord);
     const combined = blendDarken(flood, input.rgb);
 
-    return min(vec3(1.0), add(combined, vec3(0.04)));
+    const mask = min(vec3(1.0), add(combined, vec3(0.0277))).r;
+
+    // pack data into channels
+    return vec3(
+      mask, // R → mask
+      distortionX.mul(0.5).add(0.5), // G → remapped -1..1 → 0..1
+      distortionY.mul(0.5).add(0.5), // B → remapped -1..1 → 0..1
+    );
     // return vec4(flippedUV.mul(inputNode.r),0,1)
     // return inputNode;
   });
