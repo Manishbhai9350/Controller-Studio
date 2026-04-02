@@ -20,17 +20,17 @@ import {
 } from "three/tsl";
 import * as THREE from "three/webgpu";
 import { fbm, perlin2D } from "../noises/fbm";
+import type { AppUniforms } from "../types";
 
 const OffsetZ = 5;
 
 export const createBackgroundPlane = (
   scene: THREE.Scene,
   camera: THREE.PerspectiveCamera,
-  bgColor: THREE.UniformNode<"vec3", THREE.Vector3>,
-  LineColor: THREE.UniformNode<"vec3", THREE.Vector3>,
-  Uniforms,
+  bgColor: THREE.UniformNode<"color", THREE.Color>,
+  LineColor: THREE.UniformNode<"color", THREE.Color>,
+  Uniforms: AppUniforms,
 ) => {
-  console.log(bgColor, LineColor);
   // visible camera size at distance
   const fov = THREE.MathUtils.degToRad(camera.fov);
   let dist = camera.position.z + OffsetZ;

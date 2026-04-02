@@ -1,8 +1,6 @@
 import "./style.css";
 import * as THREE from "three/webgpu";
-import {
-  Fn, pass, texture, uv, vec2, uniform
-} from "three/tsl";
+import { Fn, pass, texture, uv, vec2, uniform } from "three/tsl";
 
 import { SetupMouseTrail } from "./config/mouse";
 import { SetupFluidSim } from "./config/fluidsim";
@@ -16,7 +14,8 @@ import {
 
 import { Pane } from "tweakpane";
 import { initSound } from "./config/audio.engine";
-
+import type { AppUniforms } from "./types";
+import { DotProductNode } from "./config/output.node";
 
 // --------------------------------------------------
 // BASIC SETUP
@@ -37,28 +36,69 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(devicePixelRatio);
 await renderer.init();
 
-new OrbitControls(new THREE.PerspectiveCamera(), Canvas3D);
-
-
 // --------------------------------------------------
 // UNIFORMS
 // --------------------------------------------------
 
-const Uniforms = {
+const Uniforms: AppUniforms = {
+  // Noise / animation
   uFrequency: uniform(25),
   uScale: uniform(25),
   uProgress: uniform(0),
-};
+  uSpeed: uniform(1),
+  uFallOff: uniform(0.01),
 
+  // Resolution
+  uResolution: uniform(new THREE.Vector2(innerWidth, innerHeight)),
+
+  // Line shader controls
+  uLineThicknes: uniform(0.1),
+  uLineThreshold: uniform(0.5),
+  uLineFrequency: uniform(5),
+
+  // 🎨 Background colors (normalized)
+  C1BG: uniform(new THREE.Color(0.8078, 0.8, 0.7804)),
+  C2BG: uniform(new THREE.Color(1.0, 0.7765, 0.3294)),
+
+  // 🎨 Line colors (normalized)
+  C1Line: uniform(new THREE.Color(200 / 255, 179 / 255, 126 / 255)),
+  C2Line: uniform(new THREE.Color(0.902, 0.6627, 0.2392)),
+
+  // Luminance weights (grayscale mixing)
+  LumWeights: uniform(new THREE.Vector3(0.299, 0.587, 0.114)),
+};
 
 // --------------------------------------------------
 // RESOLUTION HELPERS
 // --------------------------------------------------
 
-function getFluidSimResolution() {
-  const w = Math.min(window.innerWidth * 1.2, 1400);
-  const h = w * (window.innerHeight / window.innerWidth);
-  return { width: Math.round(w), height: Math.round(h) };
+function getFluidSimResolution(renderer: THREE.WebGPURenderer) {
+  const MIN_SCREEN = 512;
+  const MAX_SCREEN = 2000;
+  const MIN_RT = 768;
+  const MAX_RT = 1400;
+
+  const screenW = window.innerWidth;
+  const aspect = window.innerHeight / window.innerWidth;
+
+  const t = Math.min(
+    Math.max((screenW - MIN_SCREEN) / (MAX_SCREEN - MIN_SCREEN), 0),
+    1,
+  );
+
+  let width = Math.round(MIN_RT + (MAX_RT - MIN_RT) * t);
+  let height = Math.round(width * aspect);
+
+  // ⭐⭐⭐ CRITICAL FIX ⭐⭐⭐
+  if (!renderer) {
+    return { width, height };
+  }
+  const size = renderer.getDrawingBufferSize(new THREE.Vector2());
+
+  width = Math.max(width, size.x);
+  height = Math.max(height, size.y);
+
+  return { width, height };
 }
 
 function getMouseTrailResolution() {
@@ -66,7 +106,6 @@ function getMouseTrailResolution() {
   const h = w * (window.innerHeight / window.innerWidth);
   return { width: Math.round(w), height: Math.round(h) };
 }
-
 
 // --------------------------------------------------
 // MOUSE TRAIL + TEXTURE
@@ -80,7 +119,6 @@ trailTexture.magFilter = THREE.LinearFilter;
 trailTexture.generateMipmaps = false;
 trailTexture.flipY = false;
 
-
 // --------------------------------------------------
 // LOADERS
 // --------------------------------------------------
@@ -91,7 +129,6 @@ Draco.setDecoderConfig({ type: "wasm" });
 
 const GLB = new GLTFLoader();
 GLB.setDRACOLoader(Draco);
-
 
 // --------------------------------------------------
 // CONTROLLERS (SCENES)
@@ -114,26 +151,24 @@ const {
 
 ResizeControllers(innerWidth, innerHeight);
 
-
 // --------------------------------------------------
 // FLUID SIM
 // --------------------------------------------------
 
-let FluidSize = getFluidSimResolution();
+let FluidSize = getFluidSimResolution(renderer);
 let FluidSim = SetupFluidSim(
   renderer,
   FluidSize.width,
   FluidSize.height,
-  Uniforms
+  Uniforms,
 );
-
 
 // --------------------------------------------------
 // RENDER PIPELINE (VERY IMPORTANT)
 // --------------------------------------------------
 
 let renderPipeline: THREE.RenderPipeline;
-let scenePass: any;
+let scenePass: THREE.PassNode;
 let maskNode: THREE.TextureNode<"vec4">;
 
 function buildPipeline() {
@@ -142,23 +177,24 @@ function buildPipeline() {
   scenePass = pass(SceneA, CameraA);
   maskNode = FluidSim.maskNode;
 
-  renderPipeline.outputNode = Fn(() => {
-    return maskNode.sample(vec2(uv().x, uv().y.oneMinus()));
-  })();
+  const output = scenePass.getTextureNode('output')
+
+  // renderPipeline.outputNode = output;
+  // renderPipeline.outputNode = Fn(() => {
+  //   return maskNode.sample(vec2(uv().x, uv().y.oneMinus()));
+  // })();
+  renderPipeline.outputNode = DotProductNode(output,maskNode,Uniforms)
+
 }
 
 buildPipeline();
-
 
 // --------------------------------------------------
 // ANIMATION LOOP
 // --------------------------------------------------
 
-let isRebuilding = false;
-
 function animate() {
   requestAnimationFrame(animate);
-  if (isRebuilding) return;
 
   MouseTrail.update();
   trailTexture.needsUpdate = true;
@@ -170,37 +206,35 @@ function animate() {
 
 animate();
 
-
 // --------------------------------------------------
 // 🔥 REAL FIX FOR RESIZE (REBUILD EVERYTHING)
 // --------------------------------------------------
+function Resize() {
+  window.location.reload();
+  const w = innerWidth;
+  const h = innerHeight;
 
-let resizeTimer: any;
+  // renderer
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(devicePixelRatio);
 
-window.addEventListener("resize", () => {
-  clearTimeout(resizeTimer);
+  // camera
+  CameraA.aspect = w / h;
+  CameraA.updateProjectionMatrix();
 
-  resizeTimer = setTimeout(() => {
-    isRebuilding = true;
+  // update uniform resolution
+  Uniforms.uResolution.value.set(w, h);
 
-    // resize renderer
-    renderer.setSize(innerWidth, innerHeight);
+  // resize fluid sim targets
+  const fluidSize = getFluidSimResolution(renderer);
+  FluidSim.resize(fluidSize.width, fluidSize.height);
 
-    // resize mouse trail
-    const mt = getMouseTrailResolution();
-    MouseTrail.resize(mt.width, mt.height);
+  // resize mouse trail
+  const mouseSize = getMouseTrailResolution();
+  MouseTrail.resize(mouseSize.width, mouseSize.height);
 
-    // destroy + recreate fluid sim
-    FluidSim.destroy();
-    FluidSize = getFluidSimResolution();
-    FluidSim = SetupFluidSim(renderer, FluidSize.width, FluidSize.height, Uniforms);
+  // resize controller scenes
+  ResizeControllers(w, h);
+}
 
-    // resize scenes
-    ResizeControllers(innerWidth, innerHeight);
-
-    // 🚨 CRITICAL: rebuild TSL pipeline
-    buildPipeline();
-
-    isRebuilding = false;
-  }, 300);
-});
+window.addEventListener("resize", Resize);

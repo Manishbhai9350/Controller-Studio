@@ -10,18 +10,17 @@ import {
   sub,
   mul,
   min,
+  vec4,
 } from "three/tsl";
 import { MeshBasicNodeMaterial } from "three/webgpu";
 import { fbm } from "../noises/fbm";
 import type { uniforms } from "../types";
 
 interface FluidSimReturn {
-  maskNode: ReturnType<typeof texture>;
-  update: (trailTexture: THREE.Texture) => void;
-  resize: (width: number, height: number) => void;
-  destroy: () => void; // ⭐ NEW
+  maskNode: THREE.TextureNode<"vec4">;
+  update: (trailTex: THREE.Texture) => void;
+  resize: (w: number, h: number) => void;
 }
-
 const createTargets = (
   w: number,
   h: number,
@@ -54,7 +53,7 @@ export const SetupFluidSim = (
   // TSL nodes
   const prevNode = texture(targetA.texture);
   const inputNode = texture(null as unknown as THREE.Texture);
-  const maskNode = texture(targetA.texture);
+  const maskNode = texture(targetB.texture);
 
   // 🧠 FLUID SHADER
   const fluidShader = Fn(() => {
@@ -106,11 +105,12 @@ export const SetupFluidSim = (
     flood.assign(blendDarken(flood, texel9.rgb));
 
     // mouse trail input
-    const flippedUV = vec2(uvCoord.x, sub(float(1.0), uvCoord.y));
-    const input = inputNode.sample(flippedUV);
+    const input = inputNode.sample(uvCoord);
     const combined = blendDarken(flood, input.rgb);
 
     return min(vec3(1.0), add(combined, vec3(0.04)));
+    // return vec4(flippedUV.mul(inputNode.r),0,1)
+    // return inputNode;
   });
 
   // FBO scene
@@ -121,6 +121,18 @@ export const SetupFluidSim = (
   mat.colorNode = fluidShader();
 
   const geo = new THREE.PlaneGeometry(2, 2);
+
+  // flip Y of UVs (v -> 1 - v)
+  const uvAttr = geo.attributes.uv;
+
+  for (let i = 0; i < uvAttr.count; i++) {
+    const u = uvAttr.getX(i);
+    const v = uvAttr.getY(i);
+    uvAttr.setXY(i, u, 1 - v);
+  }
+
+  uvAttr.needsUpdate = true;
+
   const quad = new THREE.Mesh(geo, mat);
   fboScene.add(quad);
 
@@ -137,7 +149,7 @@ export const SetupFluidSim = (
 
     maskNode.value = targetB.texture;
 
-    // ping-pong swap
+    // // ping-pong swap
     const temp = targetA;
     targetA = targetB;
     targetB = temp;
@@ -159,14 +171,5 @@ export const SetupFluidSim = (
     maskNode.value = targetA.texture;
   };
 
-  // 💀 DESTROY (VERY IMPORTANT)
-  const destroy = () => {
-    targetA.dispose();
-    targetB.dispose();
-    geo.dispose();
-    mat.dispose();
-    renderer.setRenderTarget(null);
-  };
-
-  return { maskNode, update, resize, destroy };
+  return { maskNode, update, resize };
 };

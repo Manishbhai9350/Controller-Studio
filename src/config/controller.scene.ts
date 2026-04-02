@@ -18,6 +18,7 @@ import {
   vec4,
 } from "three/tsl";
 import { perlin2D } from "../noises/fbm";
+import type { AppUniforms } from "../types";
 
 const SceneA = new THREE.Scene();
 const SceneB = new THREE.Scene();
@@ -46,10 +47,7 @@ const setupLights = (scene: THREE.Scene) => {
   scene.add(ambient, keyLight, fillLight, rimLight);
 };
 
-
-type UniformNodeLike = { value: any };
-
-export function cloneUniforms<T extends Record<string, UniformNodeLike>>(source: T): T {
+export function cloneUniforms<AppUniforms>(source: AppUniforms): AppUniforms {
   const cloned: any = {};
 
   for (const key in source) {
@@ -81,7 +79,7 @@ export function cloneUniforms<T extends Record<string, UniformNodeLike>>(source:
     cloned[key] = uniform(value);
   }
 
-  return cloned as T;
+  return cloned as AppUniforms;
 }
 
 export const SetupControllers = ({
@@ -90,13 +88,14 @@ export const SetupControllers = ({
   GLB,
   renderer,
   pane,
-  Uniforms
+  Uniforms,
 }: {
   width: number;
   height: number;
   GLB: GLTFLoader;
   renderer: THREE.WebGPURenderer;
   pane: Pane;
+  Uniforms: AppUniforms;
 }) => {
   const aspect = width / height;
 
@@ -112,7 +111,7 @@ export const SetupControllers = ({
     rz: 0,
     mx: 0,
     my: 0,
-    mz: 0
+    mz: 0,
   };
 
   // --- Mouse rotation state ---
@@ -134,22 +133,22 @@ export const SetupControllers = ({
 
   setupLights(SceneA);
   setupLights(SceneB);
-  
-  const U2 = cloneUniforms(Uniforms)
+
+  const U2 = cloneUniforms(Uniforms);
 
   const { resize: Resize1 } = createBackgroundPlane(
     SceneA,
     CameraA,
     Uniforms.C1BG,
     Uniforms.C1Line,
-    Uniforms
+    Uniforms,
   );
   const { resize: Resize2 } = createBackgroundPlane(
     SceneB,
     CameraB,
     U2.C2BG,
     U2.C2Line,
-    U2
+    U2,
   );
 
   let C1: THREE.Group<THREE.Object3DEventMap> | null,
@@ -227,7 +226,9 @@ export const SetupControllers = ({
       Camera.updateProjectionMatrix();
 
       [Resize1, Resize2][i](Camera.position.z);
-      fitModelToView([C1, C2][i], Camera, w, h);
+      if (C1 && C2) {
+        fitModelToView([C1, C2][i], Camera, w, h);
+      }
     });
 
     // --- Update Render Targets ---

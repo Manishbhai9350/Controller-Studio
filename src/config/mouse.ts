@@ -27,7 +27,7 @@ function mountCanvas(canvas: HTMLCanvasElement) {
   canvas.style.pointerEvents = "none";
   canvas.style.zIndex = "9999";
 
-  document.body.appendChild(canvas);
+  // document.body.appendChild(canvas);
 }
 
 export const SetupMouseTrail = ({
