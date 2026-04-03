@@ -376,18 +376,70 @@ canvas.threejs {
   background: #EAF3DE;
 }
 
-/* ── Responsive ── */
-@media (max-width: 480px) {
-  .left-side,
-  .right-side,
-  .top-center,
-  .year-tag {
-    display: none;
-  }
-  .top-right { gap: 6px; }
+/* ── Loader ── */
+#loader {
+  position: fixed;
+  inset: 0;
+  background: #f0ece4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 1;
+  transition: opacity 1s ease-out, transform 1s ease-out;
 }
 
-@media (max-width: 360px) {
-  .tech-pill { display: none; }
-  .brand-sub  { display: none; }
+#loader.hidden {
+  opacity: 0;
+  transform: translateY(-100%);
+  pointer-events: none;
+}
+
+.loader-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+.loader-spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid #b8b09a;
+  border-top: 4px solid #3B6D11;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+#enter-btn {
+  background: #3B6D11;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 120px;
+  height: 120px;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+#enter-btn:hover {
+  background: #2a4d0d;
+  transform: scale(1.05);
+}
+
+#enter-btn:active {
+  transform: scale(0.95);
 }

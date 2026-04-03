@@ -124,6 +124,8 @@ export const SetupControllers = ({
   let C1: THREE.Group<THREE.Object3DEventMap> | null,
     C2: THREE.Group<THREE.Object3DEventMap> | null;
 
+  let mouseRotationEnabled = false;
+
   const Con = pane.addFolder({
     title: "Controllers",
   });
@@ -136,10 +138,17 @@ export const SetupControllers = ({
     // ✨ Fit to view
     fitModelToView(C1, CameraA, width, height);
 
+    // ✨ Initial position above screen
+    C1.position.y = 10;
+
     // ✨ Default rotation
     C1.rotation.x = Tweeks.rx;
     C1.rotation.y = Tweeks.ry;
     C1.rotation.z = Tweeks.rz;
+
+    checkModelsLoaded();
+  }, undefined, (error) => {
+    console.error("Error loading controller-permian.glb:", error);
   });
 
   GLB.load("/models/controller-basic.glb", (glb) => {
@@ -150,13 +159,61 @@ export const SetupControllers = ({
     // ✨ Fit to view
     fitModelToView(C2, CameraB, width, height);
 
+    // ✨ Initial position above screen
+    C2.position.y = 10;
+
     // ✨ Default rotation
     C2.rotation.x = Tweeks.rx;
     C2.rotation.y = Tweeks.ry;
     C2.rotation.z = Tweeks.rz;
+
+    checkModelsLoaded();
+  }, undefined, (error) => {
+    console.error("Error loading controller-basic.glb:", error);
   });
 
+  const checkModelsLoaded = () => {
+    if (C1 && C2) {
+      setModelsLoaded(true);
+    }
+  };
+
+  const animateModelsIn = () => {
+    if (!C1 || !C2) return;
+
+    // Animate models down from top
+    const duration = 1000; // ms
+    const startTime = performance.now();
+    const startY = 10;
+    const endY = 0;
+
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Ease out animation
+      const easeProgress = 1 - Math.pow(1 - progress, 3);
+      
+      const currentY = startY + (endY - startY) * easeProgress;
+      
+      C1!.position.y = currentY;
+      C2!.position.y = currentY;
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+    
+    requestAnimationFrame(animate);
+  };
+
+  const enableMouseRotation = () => {
+    mouseRotationEnabled = true;
+  };
+
   const updateMouseRotation = () => {
+    if (!mouseRotationEnabled) return;
+
     // Smooth mouse (LERP feel)
     smoothMouse.x += (targetMouse.x - smoothMouse.x) * 0.05;
     smoothMouse.y += (targetMouse.y - smoothMouse.y) * 0.05;
@@ -217,6 +274,12 @@ export const SetupControllers = ({
     targetB.setSize(correctW,correctH ); // 👈
   };
 
+  let modelsLoadedCallback: ((loaded: boolean) => void) | null = null;
+
+  const setModelsLoaded = (callback: (loaded: boolean) => void) => {
+    modelsLoadedCallback = callback;
+  };
+
   return {
     SceneA,
     SceneB,
@@ -225,5 +288,8 @@ export const SetupControllers = ({
     targetB,
     renderSceneBToTarget,
     resize,
+    enableMouseRotation,
+    animateModelsIn,
+    setModelsLoaded,
   };
 };

@@ -40,8 +40,15 @@ import Stats from "three/examples/jsm/libs/stats.module.js";
 
 const main = document.body.querySelector("main");
 const Canvas3D = main?.querySelector("canvas.threejs") as HTMLCanvasElement;
+const overlay = document.getElementById("overlay");
+const loader = document.getElementById("loader");
+const enterBtn = document.getElementById("enter-btn") as HTMLButtonElement;
 
-if (!main || !Canvas3D) throw new Error("Canvas missing");
+if (!main || !Canvas3D || !overlay || !loader || !enterBtn) throw new Error("Elements missing");
+
+// Initially hide canvas and overlay
+main.style.display = "none";
+overlay.style.display = "none";
 
 initSound();
 
@@ -186,8 +193,8 @@ MouseFolder.addBinding(Uniforms, "uMouseLERP", {
 function getFluidSimResolution() {
   const MIN_SCREEN = 512;
   const MAX_SCREEN = 1200;
-  const MIN_RT = 768;
-  const MAX_RT = 1000;
+  const MIN_RT = 256; // Further reduced
+  const MAX_RT = 512; // Further reduced
 
   const screenW = window.innerWidth;
   const aspect = window.innerHeight / window.innerWidth;
@@ -204,7 +211,7 @@ function getFluidSimResolution() {
 }
 
 function getMouseTrailResolution() {
-  const w = Math.min(window.innerWidth * 0.8, 1024);
+  const w = Math.min(window.innerWidth * 0.3, 256); // Further reduced multiplier and max
   const h = w * (window.innerHeight / window.innerWidth);
   return { width: Math.round(w), height: Math.round(h) };
 }
@@ -230,11 +237,14 @@ Draco.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.7/");
 Draco.setDecoderConfig({ type: "wasm" });
 
 const GLB = new GLTFLoader();
-GLB.setDRACOLoader(Draco);
+GLB.setDRACOLoader(Draco); // Re-enable Draco
 
 // --------------------------------------------------
 // CONTROLLERS (SCENES)
 // --------------------------------------------------
+
+let modelsLoaded = false;
+let mouseRotationEnabled = false;
 
 const {
   SceneA,
@@ -244,6 +254,9 @@ const {
   targetB,
   renderSceneBToTarget,
   resize: ResizeControllers,
+  enableMouseRotation,
+  animateModelsIn,
+  setModelsLoaded,
 } = SetupControllers({
   width: innerWidth,
   height: innerHeight,
@@ -253,7 +266,41 @@ const {
   Uniforms,
 });
 
+let enterClicked = false;
+
+setModelsLoaded((loaded: boolean) => {
+  modelsLoaded = loaded;
+  if (loaded && enterClicked) {
+    handleModelEntrance();
+  }
+});
+
+// Function to handle model entrance animation
+const handleModelEntrance = () => {
+  if (modelsLoaded) {
+    animateModelsIn();
+  }
+  // Enable mouse rotation immediately
+  mouseRotationEnabled = true;
+  enableMouseRotation();
+};
+
 ResizeControllers(innerWidth, innerHeight);
+
+// --------------------------------------------------
+// LOADER AND ENTER LOGIC
+// --------------------------------------------------
+
+enterBtn.addEventListener("click", () => {
+  enterClicked = true;
+  loader.classList.add("hidden");
+  setTimeout(() => {
+    loader.style.display = "none";
+    main.style.display = "block";
+    overlay.style.display = "block";
+    handleModelEntrance();
+  }, 1000); // Match transition duration
+});
 
 // --------------------------------------------------
 // FLUID SIM
@@ -298,16 +345,18 @@ function buildPipeline() {
   outputNode = scenePass.getTextureNode("output");
   transitionNode = texture(targetB.texture);
 
-  // renderPipeline.outputNode = output;
+  // renderPipeline.outputNode = texture(trailTexture);
+  // renderPipeline.outputNode = vec4(maskNode.r,0,0,1);
+  renderPipeline.outputNode = maskNode;
   // renderPipeline.outputNode = Fn(() => {
   //   return vec4(vec2(maskNode.sample(vec2(uv().x, uv().y)).gb),0,1);
   // })();
-  renderPipeline.outputNode = TransitionNode(
-    outputNode,
-    maskNode,
-    Uniforms,
-    transitionNode,
-  );
+  // renderPipeline.outputNode = TransitionNode(
+  //   outputNode,
+  //   maskNode,
+  //   Uniforms,
+  //   transitionNode,
+  // );
   // renderPipeline.outputNode = DotProductNodeCABase(output,maskNode,Uniforms,scene2)
   // renderPipeline.outputNode = DotProductNode(output,maskNode,Uniforms,scene2)
   // renderPipeline.outputNode = DotProductNodeCA(
@@ -323,12 +372,13 @@ buildPipeline();
 
 const onBlendChange = () => {
   // rebuild pipeline with new blend function
-  renderPipeline.outputNode = BlendFunctions[BlendFunction](
-    outputNode,
-    maskNode,
-    Uniforms,
-    transitionNode,
-  );
+  // renderPipeline.outputNode = BlendFunctions[BlendFunction](
+  //   outputNode,
+  //   maskNode,
+  //   Uniforms,
+  //   transitionNode,
+  // );
+  renderPipeline.outputNode = FluidSim.maskNode;
   renderPipeline.needsUpdate = true;
   console.log(BlendFunction)
 };

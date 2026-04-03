@@ -193,14 +193,14 @@ export const SetupFluidSim = (
     renderer.render(fboScene, fboCamera);
     renderer.setRenderTarget(null);
 
-    maskNode.value = targetB.texture;
-
-    // // ping-pong swap
+    // swap first
     const temp = targetA;
     targetA = targetB;
     targetB = temp;
-  };
 
+    // THEN point maskNode to the fresh result (now in targetA after swap)
+    maskNode.value = targetA.texture;
+  };
   // 📐 RESIZE SAFE
   const resize = (newWidth: number, newHeight: number) => {
     simWidth = newWidth;

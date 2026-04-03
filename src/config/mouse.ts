@@ -88,26 +88,24 @@ export const SetupMouseTrail = ({
     let LerpFactor = 0.1;
     const targetOpacity = speed > 0.001 ? 1 : 0;
 
-    // if (targetOpacity == 0) {
-    //   LerpFactor = 0.05;
-    // } else {
-    // }
-    // LerpFactor = 0.3;
     opacity = LERP(targetOpacity, opacity, LerpFactor);
 
-    ctx.fillStyle = "white";
+    // Instead of clearing entire canvas, apply a fade effect
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = 'rgba(255, 255, 255, 1)'; // Very subtle fade
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+    ctx.globalCompositeOperation = 'source-over';
 
-    // if (opacity > 0.01) {
-    ctx.beginPath();
-    ctx.moveTo(lastMouse.x * canvasWidth, lastMouse.y * canvasHeight);
-    ctx.lineTo(mouse.x * canvasWidth, mouse.y * canvasHeight);
-    ctx.lineCap = "round";
-    ctx.lineWidth = 100;
-    ctx.strokeStyle = `rgba(0, 1, 0, ${opacity})`;
-    // ctx.strokeStyle = `rgba(0, 0, 0, 1)`;
-    ctx.stroke();
-    // }
+    // Only draw if there's significant movement
+    if (opacity > 0.01 && speed > 0.0001) {
+      ctx.beginPath();
+      ctx.moveTo(lastMouse.x * canvasWidth, lastMouse.y * canvasHeight);
+      ctx.lineTo(mouse.x * canvasWidth, mouse.y * canvasHeight);
+      ctx.lineCap = "round";
+      ctx.lineWidth = 70; // Reduced line width
+      ctx.strokeStyle = `rgba(0, 0, 0, ${opacity})`; // Reduced opacity
+      ctx.stroke();
+    }
   };
 
   const resize = (newWidth: number, newHeight: number) => {

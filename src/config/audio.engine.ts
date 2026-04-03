@@ -43,7 +43,7 @@ export function initSound(): void {
     lastX:     0,
     lastY:     0,
     lastTime:  0,
-    variant:   'smooth',
+    variant:   'cotton', // Default to cotton
     loopSrcs:  [],
     loopGains: [],
   };
@@ -1016,42 +1016,11 @@ export function initSound(): void {
   // ── Main trigger dispatcher ────────────────────────────────────────────────
   function triggerScrub(velocity: number): void {
     switch (state.variant) {
-      case 'silky':
-        triggerScrubSilky(velocity);
-        break;
-      case 'crisp':
-        triggerScrubCrisp(velocity);
-        break;
-      case 'gritty':
-        triggerScrubGritty(velocity);
-        break;
-      case 'textured':
-        triggerScrubTextured(velocity);
-        break;
-      case 'velvety':
-        triggerScrubVelvety(velocity);
-        break;
-      case 'paper':
-        triggerScrubPaper(velocity);
-        break;
       case 'cotton':
         triggerScrubCotton(velocity);
         break;
-      case 'linen':
-        triggerScrubLinen(velocity);
-        break;
-      case 'suede':
-        triggerScrubSuede(velocity);
-        break;
-      case 'light-silk':
-        triggerScrubLightSilk(velocity);
-        break;
-      case 'canvas':
-        triggerScrubCanvas(velocity);
-        break;
-      case 'smooth':
       default:
-        triggerScrubSmooth(velocity);
+        triggerScrubCotton(velocity); // Default to cotton
     }
   }
 
@@ -1123,22 +1092,8 @@ export function initSound(): void {
   const variantContainer = document.getElementById('sound-variants') as HTMLDivElement | null;
   if (variantContainer) {
     variantContainer.innerHTML = '';
-    const variants: Array<'smooth' | 'silky' | 'crisp' | 'gritty' | 'textured' | 'velvety' | 'paper' | 'cotton' | 'linen' | 'suede' | 'light-silk' | 'canvas' | 'whoosh-loop' | 'water-ink' | 'sparkle'> = [
-      'smooth',
-      'silky',
-      'paper',
+    const variants: Array<'cotton'> = [
       'cotton',
-      'linen',
-      'suede',
-      'light-silk',
-      'crisp',
-      'gritty',
-      'textured',
-      'velvety',
-      'canvas',
-      'whoosh-loop',
-      'water-ink',
-      'sparkle',
     ];
 
     variants.forEach((variant) => {
