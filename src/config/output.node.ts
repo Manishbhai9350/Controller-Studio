@@ -129,3 +129,43 @@ export const DotProductNodeCA = (
     return mix(base, finalColor, mask);
   })();
 };
+
+export const TransitionNode = (
+  t1: THREE.TextureNode<"vec4">,
+  maskNode: THREE.TextureNode<"vec4">,
+  Uniforms: AppUniforms,
+  t2: THREE.TextureNode<"vec4">,
+) => {
+  return Fn(() => {
+    const uvs = uv();
+    const data = maskNode.sample(uvs);
+
+    const mask = data.r;
+    const distortX = data.g.mul(2.0).sub(1.0);
+    const distortY = data.b.mul(2.0).sub(1.0);
+
+    // distorted UV for base sampling
+    const distortedUV = uvs.add(
+      vec2(distortX, distortY).mul(Uniforms.uRippleStrength).mul(mask),
+    );
+
+    // CA magnitude purely from GB distortion data
+    const fluidMag = vec2(distortX, distortY).length();
+
+    const caOffset = vec2(distortX, distortY)
+      .mul(Uniforms.uRippleStrength)
+      .mul(fluidMag)
+      .mul(5);
+
+    // split RGB channels — CA only where fluid GB has data
+    const r = t1.sample(distortedUV.add(caOffset)).r;
+    const g = t1.sample(distortedUV).g;
+    const b = t1.sample(distortedUV.sub(caOffset)).b;
+
+    const t1Color = vec4(r, g, b, 1.0);
+    const t2Color = t2.sample(uvs);
+
+    // mix t1 into t2 based on mask
+    return mix(t2Color, t1Color, mask);
+  })();
+};

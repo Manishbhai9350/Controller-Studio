@@ -26,7 +26,12 @@ import {
 import { Pane } from "tweakpane";
 import { initSound } from "./config/audio.engine";
 import type { AppUniforms } from "./types";
-import { DotProductNode, DotProductNodeCA } from "./config/output.node";
+import {
+  DotProductNode,
+  DotProductNodeCA,
+  DotProductNodeCABase,
+  TransitionNode,
+} from "./config/output.node";
 import Stats from "three/examples/jsm/libs/stats.module.js";
 
 // --------------------------------------------------
@@ -180,9 +185,9 @@ MouseFolder.addBinding(Uniforms, "uMouseLERP", {
 
 function getFluidSimResolution() {
   const MIN_SCREEN = 512;
-  const MAX_SCREEN = 2000;
+  const MAX_SCREEN = 1200;
   const MIN_RT = 768;
-  const MAX_RT = 1400;
+  const MAX_RT = 1000;
 
   const screenW = window.innerWidth;
   const aspect = window.innerHeight / window.innerWidth;
@@ -264,6 +269,16 @@ let FluidSim = SetupFluidSim(
 
 new OrbitControls(CameraB, Canvas3D);
 
+const BlendFunctions = {
+  TransitionNode,
+  // DotProductNodeCABase,
+  DotProductNodeCA,
+  DotProductNode,
+};
+
+type BlendFunctionKey = keyof typeof BlendFunctions;
+let BlendFunction: BlendFunctionKey = "TransitionNode";
+
 // --------------------------------------------------
 // RENDER PIPELINE (VERY IMPORTANT)
 // --------------------------------------------------
@@ -271,6 +286,8 @@ new OrbitControls(CameraB, Canvas3D);
 let renderPipeline: THREE.RenderPipeline;
 let scenePass: THREE.PassNode;
 let maskNode: THREE.TextureNode<"vec4">;
+let outputNode: THREE.TextureNode<"vec4">;
+let transitionNode: THREE.TextureNode<"vec4">;
 
 function buildPipeline() {
   renderPipeline = new THREE.RenderPipeline(renderer);
@@ -278,13 +295,20 @@ function buildPipeline() {
   scenePass = pass(SceneA, CameraA);
   maskNode = FluidSim.maskNode;
 
-  const output = scenePass.getTextureNode("output");
-  const scene2 = texture(targetB.texture);
+  outputNode = scenePass.getTextureNode("output");
+  transitionNode = texture(targetB.texture);
 
   // renderPipeline.outputNode = output;
   // renderPipeline.outputNode = Fn(() => {
   //   return vec4(vec2(maskNode.sample(vec2(uv().x, uv().y)).gb),0,1);
   // })();
+  renderPipeline.outputNode = TransitionNode(
+    outputNode,
+    maskNode,
+    Uniforms,
+    transitionNode,
+  );
+  // renderPipeline.outputNode = DotProductNodeCABase(output,maskNode,Uniforms,scene2)
   // renderPipeline.outputNode = DotProductNode(output,maskNode,Uniforms,scene2)
   // renderPipeline.outputNode = DotProductNodeCA(
   //   output,
@@ -292,10 +316,34 @@ function buildPipeline() {
   //   Uniforms,
   //   scene2,
   // );
-  renderPipeline.outputNode = mix(output, scene2, step(uv().x, 0.5));
+  // renderPipeline.outputNode = mix(output, scene2, step(uv().x, 0.5));
 }
 
 buildPipeline();
+
+const onBlendChange = () => {
+  // rebuild pipeline with new blend function
+  renderPipeline.outputNode = BlendFunctions[BlendFunction](
+    outputNode,
+    maskNode,
+    Uniforms,
+    transitionNode,
+  );
+  renderPipeline.needsUpdate = true;
+  console.log(BlendFunction)
+};
+
+const BlendFolder = pane.addFolder({
+  title: "Blend Function",
+  expanded: false,
+});
+BlendFolder.addBinding({ BlendFunction }, "BlendFunction", {
+  label: "Mode",
+  options: Object.fromEntries(Object.keys(BlendFunctions).map((k) => [k, k])),
+}).on("change", ({ value }) => {
+  BlendFunction = value as BlendFunctionKey;
+  onBlendChange();
+});
 
 // --------------------------------------------------
 // ANIMATION LOOP
