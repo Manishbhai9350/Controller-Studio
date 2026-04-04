@@ -91,10 +91,10 @@ export const SetupMouseTrail = ({
     opacity = LERP(targetOpacity, opacity, LerpFactor);
 
     // Instead of clearing entire canvas, apply a fade effect
-    ctx.globalCompositeOperation = 'destination-out';
+    // ctx.globalCompositeOperation = 'destination-out';
     ctx.fillStyle = 'rgba(255, 255, 255, 1)'; // Very subtle fade
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-    ctx.globalCompositeOperation = 'source-over';
+    // ctx.globalCompositeOperation = 'source-over';
 
     // Only draw if there's significant movement
     if (opacity > 0.01 && speed > 0.0001) {
@@ -102,7 +102,7 @@ export const SetupMouseTrail = ({
       ctx.moveTo(lastMouse.x * canvasWidth, lastMouse.y * canvasHeight);
       ctx.lineTo(mouse.x * canvasWidth, mouse.y * canvasHeight);
       ctx.lineCap = "round";
-      ctx.lineWidth = 70; // Reduced line width
+      ctx.lineWidth = innerWidth < 900 ? 40 : 70; // Reduced line width
       ctx.strokeStyle = `rgba(0, 0, 0, ${opacity})`; // Reduced opacity
       ctx.stroke();
     }

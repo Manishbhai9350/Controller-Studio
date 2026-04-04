@@ -13,7 +13,6 @@
 
     <!-- UI overlay — lives on top of the canvas -->
     <div id="overlay">
-
       <!-- Corner brackets -->
       <div class="corner corner-tl"></div>
       <div class="corner corner-tr"></div>
@@ -24,7 +23,7 @@
       <div class="top-bar">
         <div class="brand">
           <div class="brand-name">FluidSense</div>
-          <div class="brand-sub">by Sony Interactive</div>
+          <div class="brand-sub">by Developer Manish</div>
         </div>
         <div class="top-center">
           <div class="status-dot"></div>
@@ -79,7 +78,7 @@
       <!-- Bottom bar -->
       <div class="bottom-bar">
         <div class="bottom-left">
-          <div class="headline">Dual<span>Sense</span><br>Explorer</div>
+          <div class="headline">Dual<span>Sense</span><br />Explorer</div>
           <div class="tagline">Fluid reveal · Two variants</div>
         </div>
         <div class="bottom-right">
@@ -99,7 +98,6 @@
           </div>
         </div>
       </div>
-
     </div>
 
     <!-- Three.js scene -->
@@ -107,10 +105,45 @@
 
     <!-- Loader -->
     <div id="loader">
-      <div class="loader-content">
-        <div class="loader-spinner"></div>
+      <div class="corner c-tl"></div>
+      <div class="corner c-tr"></div>
+      <div class="corner c-bl"></div>
+      <div class="corner c-br"></div>
+
+      <div class="top-tag">
+        <div class="status-dot"></div>
+        <div class="status-text" id="loader-status">Initialising assets</div>
+      </div>
+
+      <div class="loader-inner">
+        <div class="brand-block">
+          <div class="brand-name">FluidSense</div>
+          <div class="brand-sub">by Developer Manish</div>
+        </div>
+
+        <div class="orb-wrap">
+          <div class="orb-ring"></div>
+          <div class="orb-ring-2"></div>
+          <div class="orb-center"><span class="orb-glyph">DS</span></div>
+        </div>
+
+        <div class="progress-wrap">
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="loader-bar"></div>
+          </div>
+          <div class="loader-steps">
+            <div class="lstep" id="ls1"></div>
+            <div class="lstep" id="ls2"></div>
+            <div class="lstep" id="ls3"></div>
+            <div class="lstep" id="ls4"></div>
+            <div class="lstep" id="ls5"></div>
+          </div>
+        </div>
+
         <button id="enter-btn">Enter</button>
       </div>
+
+      <div class="loader-foot">DualSense Explorer · 2026</div>
     </div>
   </body>
 </html>

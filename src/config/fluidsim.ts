@@ -54,7 +54,14 @@ export const SetupFluidSim = (
 
   // TSL nodes
   const prevNode = texture(targetA.texture);
-  const inputNode = texture(null as unknown as THREE.Texture);
+  // To this — use a 1x1 white DataTexture as fallback:
+  const fallback = new THREE.DataTexture(
+    new Uint8Array([255, 255, 255, 255]),
+    1,
+    1,
+  );
+  fallback.needsUpdate = true;
+  const inputNode = texture(fallback);
   const maskNode = texture(targetB.texture);
 
   // 🧠 FLUID SHADER
@@ -188,18 +195,18 @@ export const SetupFluidSim = (
 
     inputNode.value = trailTexture;
     inputNode.needsUpdate = true;
+    mat.needsUpdate = true; // 👈 add this
 
     renderer.setRenderTarget(targetB);
     renderer.render(fboScene, fboCamera);
     renderer.setRenderTarget(null);
 
-    // swap first
     const temp = targetA;
     targetA = targetB;
     targetB = temp;
 
-    // THEN point maskNode to the fresh result (now in targetA after swap)
     maskNode.value = targetA.texture;
+    maskNode.needsUpdate = true; // 👈 add this too
   };
   // 📐 RESIZE SAFE
   const resize = (newWidth: number, newHeight: number) => {

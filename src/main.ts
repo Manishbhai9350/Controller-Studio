@@ -38,13 +38,16 @@ import Stats from "three/examples/jsm/libs/stats.module.js";
 // BASIC SETUP
 // --------------------------------------------------
 
+const isDebug = window.location.hash === "#debug";
+
 const main = document.body.querySelector("main");
 const Canvas3D = main?.querySelector("canvas.threejs") as HTMLCanvasElement;
 const overlay = document.getElementById("overlay");
 const loader = document.getElementById("loader");
 const enterBtn = document.getElementById("enter-btn") as HTMLButtonElement;
 
-if (!main || !Canvas3D || !overlay || !loader || !enterBtn) throw new Error("Elements missing");
+if (!main || !Canvas3D || !overlay || !loader || !enterBtn)
+  throw new Error("Elements missing");
 
 // Initially hide canvas and overlay
 main.style.display = "none";
@@ -77,8 +80,37 @@ if (techModePill) {
   techModePill.textContent = techMode;
 }
 
+const loaderSteps = [
+  { id: "ls1", label: "Loading shaders", pct: 20 },
+  { id: "ls2", label: "Compiling WebGPU", pct: 40 },
+  { id: "ls3", label: "Parsing geometry", pct: 60 },
+  { id: "ls4", label: "Building fluid sim", pct: 80 },
+  { id: "ls5", label: "Ready", pct: 100 },
+];
+let loaderIdx = 0;
+const loaderBar = document.getElementById("loader-bar");
+const loaderStatus = document.getElementById("loader-status");
+
+const tickLoader = () => {
+  if (loaderIdx >= loaderSteps.length) {
+    document.getElementById("enter-btn").classList.add("visible");
+    loaderStatus.textContent = "Ready to launch";
+    return;
+  }
+  const s = loaderSteps[loaderIdx];
+  document.getElementById(s.id).classList.add("done");
+  loaderBar.style.width = s.pct + "%";
+  loaderStatus.textContent = s.label;
+  loaderIdx++;
+  setTimeout(tickLoader, loaderIdx === loaderSteps.length ? 300 : 520);
+};
+
+setTimeout(tickLoader, 400);
+
 const stats = new Stats();
-document.body.appendChild(stats.dom);
+if (isDebug) {
+  document.body.appendChild(stats.dom);
+}
 
 // --------------------------------------------------
 // UNIFORMS
@@ -117,6 +149,9 @@ const Uniforms: AppUniforms = {
 };
 
 const pane = new Pane();
+if (!isDebug) {
+  pane.dispose();
+}
 
 const toTweakColor = (color: THREE.Color) => {
   const target = new THREE.Color();
@@ -193,7 +228,7 @@ MouseFolder.addBinding(Uniforms, "uMouseLERP", {
 function getFluidSimResolution() {
   const MIN_SCREEN = 512;
   const MAX_SCREEN = 1200;
-  const MIN_RT = 256; // Further reduced
+  const MIN_RT = 318; // Further reduced
   const MAX_RT = 512; // Further reduced
 
   const screenW = window.innerWidth;
@@ -299,9 +334,8 @@ enterBtn.addEventListener("click", () => {
     main.style.display = "block";
     overlay.style.display = "block";
     handleModelEntrance();
-  }, 1000); // Match transition duration
+  }, 1000); // matches the opacity transition duration
 });
-
 // --------------------------------------------------
 // FLUID SIM
 // --------------------------------------------------
@@ -345,9 +379,11 @@ function buildPipeline() {
   outputNode = scenePass.getTextureNode("output");
   transitionNode = texture(targetB.texture);
 
+  // renderPipeline.outputNode = outputNode;
   // renderPipeline.outputNode = texture(trailTexture);
+  // renderPipeline.outputNode = maskNode;
   // renderPipeline.outputNode = vec4(maskNode.r,0,0,1);
-  renderPipeline.outputNode = maskNode;
+  // renderPipeline.outputNode = maskNode;
   // renderPipeline.outputNode = Fn(() => {
   //   return vec4(vec2(maskNode.sample(vec2(uv().x, uv().y)).gb),0,1);
   // })();
@@ -366,21 +402,25 @@ function buildPipeline() {
   //   scene2,
   // );
   // renderPipeline.outputNode = mix(output, scene2, step(uv().x, 0.5));
+  renderPipeline.outputNode = BlendFunctions[BlendFunction](
+    outputNode,
+    maskNode,
+    Uniforms,
+    transitionNode,
+  );
 }
 
 buildPipeline();
 
 const onBlendChange = () => {
   // rebuild pipeline with new blend function
-  // renderPipeline.outputNode = BlendFunctions[BlendFunction](
-  //   outputNode,
-  //   maskNode,
-  //   Uniforms,
-  //   transitionNode,
-  // );
-  renderPipeline.outputNode = FluidSim.maskNode;
+  renderPipeline.outputNode = BlendFunctions[BlendFunction](
+    outputNode,
+    maskNode,
+    Uniforms,
+    transitionNode,
+  );
   renderPipeline.needsUpdate = true;
-  console.log(BlendFunction)
 };
 
 const BlendFolder = pane.addFolder({

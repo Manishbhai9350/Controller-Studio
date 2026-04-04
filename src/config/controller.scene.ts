@@ -5,6 +5,7 @@ import * as THREE from "three/webgpu";
 import { fitModelToView, setupStudioLights } from "../utils";
 import { createBackgroundPlane } from "./background";
 import type { AppUniforms } from "../types";
+import gsap from "gsap";
 
 const SceneA = new THREE.Scene();
 const SceneB = new THREE.Scene();
@@ -13,41 +14,6 @@ const CameraB = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
 
 CameraA.lookAt(0, 0, 0);
 CameraB.lookAt(0, 0, 0);
-
-const setupLights = (scene: THREE.Scene) => {
-  // Soft ambient base
-  const ambient = new THREE.AmbientLight(0xffffff, 0.5);
-
-  // Key light — main light from top left
-  const keyLight = new THREE.DirectionalLight(0xffffff, 3.7);
-  keyLight.position.set(-3, 4, 3);
-  keyLight.castShadow = true;
-  keyLight.shadow.mapSize.width = 2048;
-  keyLight.shadow.mapSize.height = 2048;
-  keyLight.shadow.radius = 4; // softness
-
-  // Fill light — softer from right
-  const fillLight = new THREE.DirectionalLight(0xffffff, 1.5);
-  fillLight.position.set(3, 2, 2);
-  fillLight.castShadow = true;
-  fillLight.shadow.mapSize.width = 2048;
-  fillLight.shadow.mapSize.height = 2048;
-  fillLight.shadow.radius = 4; // softness
-
-  // Rim light — from behind to give edge definition
-  const rimLight = new THREE.DirectionalLight(0xffffff, 2.7);
-  rimLight.position.set(0, -2, -4);
-  fillLight;
-  rimLight.castShadow = true;
-  fillLight;
-  rimLight.shadow.mapSize.width = 2048;
-  fillLight;
-  rimLight.shadow.mapSize.height = 2048;
-  fillLight;
-  rimLight.shadow.radius = 4; // softness
-
-  scene.add(ambient, keyLight, fillLight, rimLight);
-};
 
 export const SetupControllers = ({
   width,
@@ -85,23 +51,15 @@ export const SetupControllers = ({
   let targetMouse = { x: 0, y: 0 };
   let smoothMouse = { x: 0, y: 0 };
 
-  // strength of effect (very important for premium feel)
   const mouseStrength = 0.4;
 
   const dpr = renderer.getPixelRatio();
-  console.log(dpr)
 
   const opts = {
     minFilter: THREE.LinearFilter,
     magFilter: THREE.LinearFilter,
-    // depthBuffer: false,
-    // stencilBuffer: false,
   };
   const targetB = new THREE.RenderTarget(width * dpr, height * dpr, opts);
-
-  // targetB.texture.minFilter = THREE.LinearFilter;
-  // targetB.texture.magFilter = THREE.LinearFilter;
-  // targetB.texture.generateMipmaps = false;
 
   setupStudioLights(SceneA);
   setupStudioLights(SceneB);
@@ -121,90 +79,61 @@ export const SetupControllers = ({
     Uniforms,
   );
 
-  let C1: THREE.Group<THREE.Object3DEventMap> | null,
-    C2: THREE.Group<THREE.Object3DEventMap> | null;
+  let C1: THREE.Group<THREE.Object3DEventMap> | null = null;
+  let C2: THREE.Group<THREE.Object3DEventMap> | null = null;
 
   let mouseRotationEnabled = false;
+  let onModelsLoadedCallback: ((loaded: boolean) => void) | null = null;
 
-  const Con = pane.addFolder({
-    title: "Controllers",
-  });
+  const Con = pane.addFolder({ title: "Controllers" });
 
-  GLB.load("/models/controller-permian.glb", (glb) => {
-    C1 = glb.scene;
+  GLB.load(
+    "/models/controller-permian.glb",
+    (glb) => {
+      C1 = glb.scene;
+      SceneA.add(C1);
+      fitModelToView(C1, CameraA, width, height);
+      C1.position.y = 10;
+      C1.rotation.x = Tweeks.rx;
+      C1.rotation.y = Tweeks.ry;
+      C1.rotation.z = Tweeks.rz;
+      checkModelsLoaded();
+    },
+    undefined,
+    (error) => console.error("Error loading controller-permian.glb:", error),
+  );
 
-    SceneA.add(C1);
-
-    // ✨ Fit to view
-    fitModelToView(C1, CameraA, width, height);
-
-    // ✨ Initial position above screen
-    C1.position.y = 10;
-
-    // ✨ Default rotation
-    C1.rotation.x = Tweeks.rx;
-    C1.rotation.y = Tweeks.ry;
-    C1.rotation.z = Tweeks.rz;
-
-    checkModelsLoaded();
-  }, undefined, (error) => {
-    console.error("Error loading controller-permian.glb:", error);
-  });
-
-  GLB.load("/models/controller-basic.glb", (glb) => {
-    C2 = glb.scene;
-
-    SceneB.add(C2);
-
-    // ✨ Fit to view
-    fitModelToView(C2, CameraB, width, height);
-
-    // ✨ Initial position above screen
-    C2.position.y = 10;
-
-    // ✨ Default rotation
-    C2.rotation.x = Tweeks.rx;
-    C2.rotation.y = Tweeks.ry;
-    C2.rotation.z = Tweeks.rz;
-
-    checkModelsLoaded();
-  }, undefined, (error) => {
-    console.error("Error loading controller-basic.glb:", error);
-  });
+  GLB.load(
+    "/models/controller-basic.glb",
+    (glb) => {
+      C2 = glb.scene;
+      SceneB.add(C2);
+      fitModelToView(C2, CameraB, width, height);
+      C2.position.y = 10;
+      C2.rotation.x = Tweeks.rx;
+      C2.rotation.y = Tweeks.ry;
+      C2.rotation.z = Tweeks.rz;
+      checkModelsLoaded();
+    },
+    undefined,
+    (error) => console.error("Error loading controller-basic.glb:", error),
+  );
 
   const checkModelsLoaded = () => {
     if (C1 && C2) {
-      setModelsLoaded(true);
+      onModelsLoadedCallback?.(true);
     }
   };
 
   const animateModelsIn = () => {
     if (!C1 || !C2) return;
 
-    // Animate models down from top
-    const duration = 1000; // ms
-    const startTime = performance.now();
-    const startY = 10;
-    const endY = 0;
-
-    const animate = (currentTime: number) => {
-      const elapsed = currentTime - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      
-      // Ease out animation
-      const easeProgress = 1 - Math.pow(1 - progress, 3);
-      
-      const currentY = startY + (endY - startY) * easeProgress;
-      
-      C1!.position.y = currentY;
-      C2!.position.y = currentY;
-      
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      }
-    };
-    
-    requestAnimationFrame(animate);
+    // ✅ GSAP: tween both model positions down from y=10 to y=0
+    gsap.to([C1.position, C2.position], {
+      y: 0,
+      duration: 1,
+      ease: "power3.out",
+    });
   };
 
   const enableMouseRotation = () => {
@@ -214,7 +143,6 @@ export const SetupControllers = ({
   const updateMouseRotation = () => {
     if (!mouseRotationEnabled) return;
 
-    // Smooth mouse (LERP feel)
     smoothMouse.x += (targetMouse.x - smoothMouse.x) * 0.05;
     smoothMouse.y += (targetMouse.y - smoothMouse.y) * 0.05;
 
@@ -234,18 +162,18 @@ export const SetupControllers = ({
 
   let timeOutId: number | undefined;
   window.addEventListener("mousemove", (e) => {
-    clearTimeout(timeOutId)
+    clearTimeout(timeOutId);
     targetMouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     targetMouse.y = (e.clientY / window.innerHeight) * 2 - 1;
     timeOutId = setTimeout(() => {
-      targetMouse.x = 0
-      targetMouse.y = 0
+      targetMouse.x = 0;
+      targetMouse.y = 0;
     }, 750);
   });
 
   window.addEventListener("mouseleave", () => {
-    console.log(targetMouse)
-  })
+    console.log(targetMouse);
+  });
 
   const renderSceneBToTarget = () => {
     updateMouseRotation();
@@ -257,27 +185,22 @@ export const SetupControllers = ({
   const resize = (w: number, h: number) => {
     const correctW = w * dpr;
     const correctH = h * dpr;
-    const aspect = correctW /correctH;
+    const aspect = correctW / correctH;
 
-    // --- Update Cameras ---
     [CameraA, CameraB].forEach((Camera, i) => {
       Camera.aspect = aspect;
       Camera.updateProjectionMatrix();
-
       [Resize1, Resize2][i](Camera.position.z);
       if (C1 && C2) {
-        fitModelToView([C1, C2][i], Camera, w,h);
+        fitModelToView([C1, C2][i], Camera, w, h);
       }
     });
 
-    // --- Update Render Targets ---
-    targetB.setSize(correctW,correctH ); // 👈
+    targetB.setSize(correctW, correctH);
   };
 
-  let modelsLoadedCallback: ((loaded: boolean) => void) | null = null;
-
   const setModelsLoaded = (callback: (loaded: boolean) => void) => {
-    modelsLoadedCallback = callback;
+    onModelsLoadedCallback = callback;
   };
 
   return {

@@ -375,8 +375,6 @@ canvas.threejs {
   color: #3B6D11;
   background: #EAF3DE;
 }
-
-/* ── Loader ── */
 #loader {
   position: fixed;
   inset: 0;
@@ -387,59 +385,195 @@ canvas.threejs {
   z-index: 1000;
   opacity: 1;
   transition: opacity 1s ease-out, transform 1s ease-out;
+  font-family: 'Inter', system-ui, sans-serif;
+  overflow: hidden;
 }
 
 #loader.hidden {
   opacity: 0;
-  transform: translateY(-100%);
   pointer-events: none;
 }
 
-.loader-content {
-  text-align: center;
+/* corner brackets reuse existing .corner classes */
+
+.top-tag {
+  position: absolute;
+  top: var(--corner-inset);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.loader-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2rem;
+  gap: 32px;
+  text-align: center;
 }
 
-.loader-spinner {
-  width: 60px;
-  height: 60px;
-  border: 4px solid #b8b09a;
-  border-top: 4px solid #3B6D11;
+/* ── Brand ── */
+.brand-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Orbital orb ── */
+.orb-wrap {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+.orb-ring {
+  position: absolute;
+  inset: 0;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  border: 1px solid #c8c0b0;
+  animation: orb-spin 8s linear infinite;
 }
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-#enter-btn {
+.orb-ring::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
   background: #3B6D11;
-  color: white;
-  border: none;
+}
+
+.orb-ring-2 {
+  position: absolute;
+  inset: 12px;
   border-radius: 50%;
-  width: 120px;
-  height: 120px;
-  font-size: 18px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
+  border: 0.5px solid #d8d0c0;
+  animation: orb-spin 5s linear infinite reverse;
+}
+.orb-ring-2::before {
+  content: '';
+  position: absolute;
+  top: -2.5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #b8b09a;
+}
+
+.orb-center {
+  position: absolute;
+  inset: 28px;
+  border-radius: 50%;
+  background: #eae4d8;
+  border: 0.5px solid #c8c0b0;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+.orb-glyph {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  color: #3B6D11;
+}
+
+@keyframes orb-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Progress ── */
+.progress-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 160px;
+}
+
+.progress-bar-bg {
+  width: 100%;
+  height: 1px;
+  background: #d8d0c0;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  position: absolute;
+  top: 0; left: 0;
+  height: 100%;
+  width: 0%;
+  background: #3B6D11;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.loader-steps {
+  display: flex;
+  gap: 6px;
+}
+
+.lstep {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #d8d0c0;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+.lstep.done {
+  background: #3B6D11;
+  transform: scale(1.2);
+}
+
+#loader-status {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #9a9180;
   text-transform: uppercase;
-  letter-spacing: 1px;
 }
 
-#enter-btn:hover {
-  background: #2a4d0d;
-  transform: scale(1.05);
+/* ── Enter button ── */
+#enter-btn {
+  padding: 10px 28px;
+  background: #3B6D11;
+  color: #EAF3DE;
+  border: none;
+  border-radius: 2px;
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  opacity: 0;
+  /* transform: translateY(6px); */
+  /* transition: opacity 0.5s ease, transform 0.5s ease, background 0.2s; */
+  pointer-events: none;
 }
+#enter-btn.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+#enter-btn:hover { background: #2a4d0d; }
+#enter-btn:active { transform: scale(0.97); }
 
-#enter-btn:active {
-  transform: scale(0.95);
+/* ── Footer ── */
+.loader-foot {
+  position: absolute;
+  bottom: var(--corner-inset);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: #b8b09a;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
