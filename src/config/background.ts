@@ -1,25 +1,6 @@
-import {
-  abs,
-  attribute,
-  color,
-  float,
-  Fn,
-  fract,
-  length,
-  mix,
-  positionLocal,
-  positionWorld,
-  smoothstep,
-  step,
-  time,
-  uv,
-  varying,
-  vec2,
-  vec3,
-  vec4,
-} from "three/tsl";
+import { abs, Fn, fract, mix, step, time, uv, vec2 } from "three/tsl";
 import * as THREE from "three/webgpu";
-import { fbm, perlin2D } from "../noises/fbm";
+import { perlin2D } from "../noises/fbm";
 import type { AppUniforms } from "../types";
 
 const OffsetZ = 5;
@@ -42,7 +23,6 @@ export const createBackgroundPlane = (
 
   const finalColor = Fn(() => {
     // uniforms
-    const uFrequency = 8;
     const uScale = 8;
     const threshold = Uniforms.uLineThreshold;
     const thickness = Uniforms.uLineThicknes.div(2);
@@ -52,11 +32,14 @@ export const createBackgroundPlane = (
 
     // your fbm function 👇
     const n = perlin2D(
-      vec2(centeredUV.mul(Uniforms.uLineFrequency)).add(time).mul(0.3),
-    ).mul(uScale);
+      vec2(centeredUV.mul(Uniforms.uLineFrequency))
+        .add(time)
+        .mul(uScale)
+        .mul(0.22),
+    );
 
     // circular contour rings
-    const rings = fract(n);
+    const rings = fract(n.mul(2));
 
     const lower = threshold.sub(thickness);
     const upper = threshold.add(thickness);

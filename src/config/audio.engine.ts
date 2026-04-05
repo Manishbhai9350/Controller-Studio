@@ -30,7 +30,7 @@ interface SoundState {
   lastY:     number;
   lastTime:  number;
   variant:   'smooth' | 'silky' | 'crisp' | 'gritty' | 'textured' | 'velvety' | 'paper' | 'cotton' | 'linen' | 'suede' | 'light-silk' | 'canvas' | 'whoosh-loop' | 'water-ink' | 'sparkle';
-  loopSrcs:  AudioBufferSource[];
+  loopSrcs:  AudioBufferSourceNode[];
   loopGains: GainNode[];
 }
 
@@ -85,6 +85,8 @@ export function initSound(): void {
   //    Same noise buffer → highpass 5 kHz → bandpass ~8 kHz, Q=1.5
   //    → gain: much quieter, slightly longer tail (icy sustain)
   //    Volume scales with velocity² so it only appears on faster moves
+
+    /**
 
   // ── Smooth Paper (default) ───────────────────────────────────────────────
   // Warm, gentle, slightly filtered
@@ -473,6 +475,8 @@ export function initSound(): void {
     src.stop(now + duration + 0.02);
   }
 
+  **/
+
   // ── Cotton (soft fabric texture) ──────────────────────────────────────────
   // Warm, soft, slightly damped like cotton
   function triggerScrubCotton(velocity: number): void {
@@ -524,6 +528,8 @@ export function initSound(): void {
     src.start(now);
     src.stop(now + duration + 0.025);
   }
+
+  /**
 
   // ── Linen (structured fabric texture) ─────────────────────────────────────
   // Crisp but warm, like linen fabric
@@ -739,6 +745,8 @@ export function initSound(): void {
     src.start(now);
     src.stop(now + duration + 0.019);
   }
+
+  **/
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ── PREMIUM FLUID SOUNDSCAPE ──────────────────────────────────────────────
@@ -1112,9 +1120,9 @@ export function initSound(): void {
 
         // Start fluid loops if sound is on
         if (state.isOn) {
-          if (variant === 'whoosh-loop' || variant === 'water-ink' || variant === 'sparkle') {
-            handleFluidVariant();
-          }
+          // if (variant === 'whoosh-loop' || variant === 'water-ink' || variant === 'sparkle') {
+          //   handleFluidVariant();
+          // }
         }
       });
 

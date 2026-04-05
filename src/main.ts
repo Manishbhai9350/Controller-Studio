@@ -1,17 +1,6 @@
 import "./style.css";
 import * as THREE from "three/webgpu";
-import {
-  Fn,
-  pass,
-  texture,
-  uv,
-  vec2,
-  uniform,
-  vec4,
-  vec3,
-  step,
-  mix,
-} from "three/tsl";
+import { pass, texture, uniform } from "three/tsl";
 
 import { SetupMouseTrail } from "./config/mouse";
 import { SetupFluidSim } from "./config/fluidsim";
@@ -29,7 +18,6 @@ import type { AppUniforms } from "./types";
 import {
   DotProductNode,
   DotProductNodeCA,
-  DotProductNodeCABase,
   TransitionNode,
 } from "./config/output.node";
 import Stats from "three/examples/jsm/libs/stats.module.js";
@@ -89,17 +77,18 @@ const loaderSteps = [
 ];
 let loaderIdx = 0;
 const loaderBar = document.getElementById("loader-bar");
-const loaderStatus = document.getElementById("loader-status");
+const loaderStatus = document.getElementById("loader-status")!;
 
 const tickLoader = () => {
   if (loaderIdx >= loaderSteps.length) {
-    document.getElementById("enter-btn").classList.add("visible");
+    enterBtn.classList.add("visible");
     loaderStatus.textContent = "Ready to launch";
     return;
   }
   const s = loaderSteps[loaderIdx];
-  document.getElementById(s.id).classList.add("done");
-  loaderBar.style.width = s.pct + "%";
+  const sElem = document.getElementById(s.id)!;
+  sElem.classList.add("done");
+  loaderBar!.style.width = s.pct + "%";
   loaderStatus.textContent = s.label;
   loaderIdx++;
   setTimeout(tickLoader, loaderIdx === loaderSteps.length ? 300 : 520);
@@ -279,13 +268,12 @@ GLB.setDRACOLoader(Draco); // Re-enable Draco
 // --------------------------------------------------
 
 let modelsLoaded = false;
-let mouseRotationEnabled = false;
+// let mouseRotationEnabled = false;
 
 const {
   SceneA,
   CameraA,
   CameraB,
-  SceneB,
   targetB,
   renderSceneBToTarget,
   resize: ResizeControllers,
@@ -316,7 +304,7 @@ const handleModelEntrance = () => {
     animateModelsIn();
   }
   // Enable mouse rotation immediately
-  mouseRotationEnabled = true;
+  // mouseRotationEnabled = true;
   enableMouseRotation();
 };
 
@@ -402,24 +390,24 @@ function buildPipeline() {
   //   scene2,
   // );
   // renderPipeline.outputNode = mix(output, scene2, step(uv().x, 0.5));
-  renderPipeline.outputNode = BlendFunctions[BlendFunction](
-    outputNode,
+  renderPipeline.outputNode = BlendFunctions[BlendFunction]({
+    t1: outputNode,
     maskNode,
     Uniforms,
-    transitionNode,
-  );
+    t2: transitionNode,
+  });
 }
 
 buildPipeline();
 
 const onBlendChange = () => {
   // rebuild pipeline with new blend function
-  renderPipeline.outputNode = BlendFunctions[BlendFunction](
-    outputNode,
+  renderPipeline.outputNode = BlendFunctions[BlendFunction]({
+    t1: outputNode,
     maskNode,
     Uniforms,
-    transitionNode,
-  );
+    t2: transitionNode,
+  });
   renderPipeline.needsUpdate = true;
 };
 
@@ -474,7 +462,7 @@ function Resize() {
   Uniforms.uResolution.value.set(w, h);
 
   // resize fluid sim targets
-  const fluidSize = getFluidSimResolution(renderer);
+  const fluidSize = getFluidSimResolution();
   FluidSim.resize(fluidSize.width, fluidSize.height);
 
   // resize mouse trail

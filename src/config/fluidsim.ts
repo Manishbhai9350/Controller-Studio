@@ -8,9 +8,7 @@ import {
   float,
   add,
   sub,
-  mul,
   min,
-  vec4,
   abs,
   max,
 } from "three/tsl";

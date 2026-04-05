@@ -6,8 +6,8 @@ export const LERP = (target: number, current: number, delta: number) =>
 export const fitModelToView = (
   model: THREE.Group,
   camera: THREE.PerspectiveCamera,
-  sceneWidth: number,
-  sceneHeight: number,
+  // sceneWidth: number,
+  // sceneHeight: number,
 ) => {
   if (!model || !camera) return;
 

@@ -20,7 +20,6 @@ export const SetupControllers = ({
   height,
   GLB,
   renderer,
-  pane,
   Uniforms,
 }: {
   width: number;
@@ -85,14 +84,13 @@ export const SetupControllers = ({
   let mouseRotationEnabled = false;
   let onModelsLoadedCallback: ((loaded: boolean) => void) | null = null;
 
-  const Con = pane.addFolder({ title: "Controllers" });
 
   GLB.load(
     "/models/controller-permian.glb",
     (glb) => {
       C1 = glb.scene;
       SceneA.add(C1);
-      fitModelToView(C1, CameraA, width, height);
+      fitModelToView(C1, CameraA, /* width, height */);
       C1.position.y = 10;
       C1.rotation.x = Tweeks.rx;
       C1.rotation.y = Tweeks.ry;
@@ -108,7 +106,7 @@ export const SetupControllers = ({
     (glb) => {
       C2 = glb.scene;
       SceneB.add(C2);
-      fitModelToView(C2, CameraB, width, height);
+      fitModelToView(C2, CameraB, /* width, height */);
       C2.position.y = 10;
       C2.rotation.x = Tweeks.rx;
       C2.rotation.y = Tweeks.ry;
@@ -192,7 +190,7 @@ export const SetupControllers = ({
       Camera.updateProjectionMatrix();
       [Resize1, Resize2][i](Camera.position.z);
       if (C1 && C2) {
-        fitModelToView([C1, C2][i], Camera, w, h);
+        fitModelToView([C1, C2][i], Camera, /* w, h */);
       }
     });
 
