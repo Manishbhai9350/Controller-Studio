@@ -102,7 +102,7 @@ export const SetupMouseTrail = ({
       ctx.moveTo(lastMouse.x * canvasWidth, lastMouse.y * canvasHeight);
       ctx.lineTo(mouse.x * canvasWidth, mouse.y * canvasHeight);
       ctx.lineCap = "round";
-      ctx.lineWidth = innerWidth < 900 ? 40 : 70; // Reduced line width
+      ctx.lineWidth = innerWidth < 900 ? 40 : 50; // Reduced line width
       ctx.strokeStyle = `rgba(0, 0, 0, ${opacity})`; // Reduced opacity
       ctx.stroke();
     }

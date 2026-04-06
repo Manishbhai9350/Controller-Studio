@@ -68,10 +68,10 @@ export const SetupFluidSim = (
 
     const noiseX = fbm(
       vec2(uvCoord.x.mul(uvCoord.y), uvCoord.y).mul(Uniforms.uFrequency),
-    );
+    ).mul(.4);
     const noiseY = fbm(
       vec2(uvCoord.x, uvCoord.y.mul(uvCoord.x)).mul(Uniforms.uFrequency),
-    );
+    ).mul(.4);
 
     const disp = vec2(noiseX, noiseY).mul(float(0.001).mul(Uniforms.uScale));
 
@@ -128,7 +128,7 @@ export const SetupFluidSim = (
 
     const edgeStrength = min(
       float(1.0),
-      add(abs(gradX), abs(gradY)).mul(8.0), // boost edges
+      add(abs(gradX), abs(gradY)).mul(3), // boost edges
     );
 
     const edgeXYStrength = max(
@@ -152,7 +152,7 @@ export const SetupFluidSim = (
     const input = inputNode.sample(uvCoord);
     const combined = blendDarken(flood, input.rgb);
 
-    const mask = min(vec3(1.0), add(combined, vec3(0.0277))).r;
+    const mask = min(vec3(1.0), add(combined, vec3(0.06))).r;
 
     // pack data into channels
     return vec3(
