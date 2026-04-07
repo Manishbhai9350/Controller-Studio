@@ -380,6 +380,7 @@ canvas.threejs {
   inset: 0;
   background: #f0ece4;
   display: flex;
+  /* display: none; */
   align-items: center;
   justify-content: center;
   z-index: 1000;

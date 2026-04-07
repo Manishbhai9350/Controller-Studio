@@ -122,13 +122,13 @@ const Uniforms: AppUniforms = {
   uLineFrequency: uniform(5),
 
   // 🎨 Background colors (normalized)
-  C1BG: uniform(new THREE.Color(0.8078, 0.8, 0.7804)),
-  C2BG: uniform(new THREE.Color(0.18, 0.18, 0.18)),
+  C2BG: uniform(new THREE.Color(0.8078, 0.8, 0.7804)),
+  C1BG: uniform(new THREE.Color(0.18, 0.18, 0.18)),
 
   // {r: 0.33, g: 0.33, b: 0.33}
   // 🎨 Line colors (normalized)
-  C1Line: uniform(new THREE.Color(200 / 255, 179 / 255, 126 / 255)),
-  C2Line: uniform(new THREE.Color(0.95, 0.95, 0.7)),
+  C2Line: uniform(new THREE.Color(200 / 255, 179 / 255, 126 / 255)),
+  C1Line: uniform(new THREE.Color(0.95, 0.95, 0.7)),
 
   // Luminance weights (grayscale mixing)
   LumWeights: uniform(new THREE.Vector3(0.299, 0.587, 0.114)),
@@ -314,6 +314,9 @@ ResizeControllers(innerWidth, innerHeight);
 // LOADER AND ENTER LOGIC
 // --------------------------------------------------
 
+// loader.style.display = "none";
+// main.style.display = "block";
+// overlay.style.display = "block";
 enterBtn.addEventListener("click", () => {
   enterClicked = true;
   loader.classList.add("hidden");
@@ -336,7 +339,7 @@ let FluidSim = SetupFluidSim(
   Uniforms,
 );
 
-new OrbitControls(CameraB, Canvas3D);
+// new OrbitControls(CameraB, Canvas3D);
 
 const BlendFunctions = {
   TransitionNode,
@@ -392,6 +395,7 @@ function buildPipeline() {
   // renderPipeline.outputNode = mix(output, scene2, step(uv().x, 0.5));
   renderPipeline.outputNode = BlendFunctions[BlendFunction]({
     t1: outputNode,
+    // t1: transitionNode,
     maskNode,
     Uniforms,
     t2: transitionNode,
@@ -426,7 +430,6 @@ BlendFolder.addBinding({ BlendFunction }, "BlendFunction", {
 // --------------------------------------------------
 // ANIMATION LOOP
 // --------------------------------------------------
-
 
 function animate() {
   stats.begin();
@@ -474,4 +477,4 @@ function Resize() {
   ResizeControllers(w, h);
 }
 
-window.addEventListener("resize", Resize);
+// window.addEventListener("resize", Resize);

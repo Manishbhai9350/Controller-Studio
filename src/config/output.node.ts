@@ -13,15 +13,16 @@ interface NodeProps {
 export const DotProductNode = ({
   t1,
   t2,
+  maskNode
 }:NodeProps) => {
   return Fn(() => {
     // base UVs
-    // const uvs = uv();
+    const uvs = uv();
 
     // read fluid data texture
-    // const data = maskNode.sample(uvs);
+    const data = maskNode.sample(uvs);
 
-    // const mask = data.r;
+    const mask = data.r;
 
     // unpack distortion from GB channels (0..1 → -1..1)
     // const distortX = data.g.mul(2.0).sub(1.0);
@@ -45,7 +46,7 @@ export const DotProductNode = ({
 
     // mix grayscale with original based on mask
     // return mix(sceneColor, grayscaleColor, mask);
-    return mix(base, sceneColor, 0);
+    return mix(base, sceneColor, mask);
   })();
 };
 
