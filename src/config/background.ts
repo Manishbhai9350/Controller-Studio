@@ -1,6 +1,6 @@
 import { abs, dot, Fn, fract, mix, step, time, uv, vec2 } from "three/tsl";
 import * as THREE from "three/webgpu";
-import { noise2D, perlin2D } from "../noises/fbm";
+import { noise2D } from "../noises/fbm";
 import type { AppUniforms } from "../types";
 
 const OffsetZ = 5;
@@ -24,8 +24,8 @@ export const createBackgroundPlane = (
   const finalColor = Fn(() => {
     // uniforms
     const uScale = 8;
-    const threshold = Uniforms.uLineThreshold;
-    const thickness = Uniforms.uLineThicknes.div(2);
+    // const threshold = Uniforms.uLineThreshold;
+    // const thickness = Uniforms.uLineThicknes.div(2);
 
     // centered UV (-1 → 1)
     const centeredUV = uv().mul(2).sub(1);

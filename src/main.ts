@@ -9,7 +9,7 @@ import { SetupControllers } from "./config/controller.scene";
 import {
   DRACOLoader,
   GLTFLoader,
-  OrbitControls,
+  // OrbitControls,
 } from "three/examples/jsm/Addons.js";
 
 import { Pane } from "tweakpane";
@@ -273,7 +273,7 @@ let modelsLoaded = false;
 const {
   SceneA,
   CameraA,
-  CameraB,
+  // CameraB,
   targetB,
   renderSceneBToTarget,
   resize: ResizeControllers,
@@ -477,4 +477,4 @@ function Resize() {
   ResizeControllers(w, h);
 }
 
-// window.addEventListener("resize", Resize);
+window.addEventListener("resize", Resize);
