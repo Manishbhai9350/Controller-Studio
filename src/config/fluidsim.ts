@@ -152,7 +152,7 @@ export const SetupFluidSim = (
     const input = inputNode.sample(uvCoord);
     const combined = blendDarken(flood, input.rgb);
 
-    const mask = min(vec3(1.0), add(combined, vec3(0.02))).r;
+    const mask = min(vec3(1.0), add(combined, vec3(0.05 ))).r;
 
     // pack data into channels
     return vec3(
