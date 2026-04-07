@@ -55,7 +55,7 @@ canvas.threejs {
 .top-bar {
   position: absolute;
   top: 0; left: 0; right: 0;
-  padding: clamp(22px, 4vh, 40px) var(--content-inset);
+  padding: clamp(22px, 20vw, 50px) var(--content-inset);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -189,7 +189,7 @@ canvas.threejs {
 .bottom-bar {
   position: absolute;
   bottom: 0; left: 0; right: 0;
-  padding: clamp(22px, 4vh, 40px) var(--content-inset);
+  padding: clamp(22px, 20vw, 50px) var(--content-inset);
   display: flex;
   align-items: flex-end;
   justify-content: space-between;

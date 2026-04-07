@@ -427,6 +427,7 @@ BlendFolder.addBinding({ BlendFunction }, "BlendFunction", {
 // ANIMATION LOOP
 // --------------------------------------------------
 
+
 function animate() {
   stats.begin();
   requestAnimationFrame(animate);
